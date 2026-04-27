@@ -1,0 +1,1 @@
+python3 star_cdf.py -se '/Users/hafijulislam/UNH/imap-data-access/prostar/imap_lo_l1b_prostar_20260201-repoint00144_v002.cdf' -sp 15.01

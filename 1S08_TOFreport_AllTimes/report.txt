@@ -1,0 +1,29 @@
+Processing file: ./input/imap_lo_l1b_de_20260121-repoint00133_v003.cdf
+Output H file: ./output/imap_lo_l1b_de_20260121-repoint00133_v003
+input: ./input/imap_lo_l1b_de_20260121-repoint00133_v003.cdf
+output: ./output/imap_lo_l1b_de_20260121-repoint00133_v003
+absent esa = 1 ave =  7.45906083440544
+avg_spin_durations esa = 1 ave =  15.010614470744217
+badtimes esa = 1 ave =  0.0
+coincidence_type esa = 1 ave =  None
+epoch esa = 1 ave =  None
+esa_mode esa = 1 ave =  0.0
+esa_step esa = 1 ave =  3.0609263003124427
+event_met esa = 1 ave =  506729313.272785
+hae_x esa = 1 ave =  -0.5973805487045155
+hae_y esa = 1 ave =  -0.3118310245450485
+hae_z esa = 1 ave =  0.04541283885740273
+mode_bit esa = 1 ave =  0.662056607241316
+off_angle_bin esa = 1 ave =  20.0
+pivot_angle esa = 1 ave =  90.00913718999999
+pos esa = 1 ave =  162.8147858849476
+shcoarse esa = 1 ave =  506729319.8178184
+species esa = 1 ave =  None
+spin_bin esa = 1 ave =  1152.7964528579305
+spin_cycle esa = 1 ave =  682210.4780371255
+tof0 esa = 1 ave =  -5.462231207498621e+30
+tof1 esa = 1 ave =  -5.234331924278624e+30
+tof2 esa = 1 ave =  -3.2912148502113576e+30
+tof3 esa = 1 ave =  -7.008821907737547e+30
+ 
+ 

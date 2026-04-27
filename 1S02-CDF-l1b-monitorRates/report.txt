@@ -1,0 +1,231 @@
+Processing file: ./input/imap_lo_l1b_monitorrates_20260121-repoint00133_v001.cdf
+Output H file: ./output/imap_lo_l1b_monitorrates_20260121-repoint00133_v001
+input: ./input/imap_lo_l1b_monitorrates_20260121-repoint00133_v001.cdf
+output: ./output/imap_lo_l1b_monitorrates_20260121-repoint00133_v001
+disc_tof0_rates esa = 1 ave =  14.99923929765361
+disc_tof1_rates esa = 1 ave =  13.72780145805659
+disc_tof2_rates esa = 1 ave =  2.780167066521417
+disc_tof3_rates esa = 1 ave =  0.004468331424620096
+epoch esa = 1 ave =  None
+esa_mode esa = 1 ave =  0.0
+esa_step esa = 1 ave =  4.0
+esa_step_label esa = 1 ave =  None
+exposure_time_60deg esa = 1 ave =  2.5010663017838297
+exposure_time_6deg esa = 1 ave =  0.25010663017838297
+pos0_rates esa = 1 ave =  0.05361162365129314
+pos1_rates esa = 1 ave =  0.07780879565698859
+pos2_rates esa = 1 ave =  0.06031176250677741
+pos3_rates esa = 1 ave =  0.03983660014752575
+silver_triple_rates esa = 1 ave =  0.0003724291720286465
+spin_bin_6 esa = 1 ave =  29.5
+spin_bin_60 esa = 1 ave =  2.5
+spin_cycle esa = 1 ave =  682641.4078212291
+start_a_rates esa = 1 ave =  164.6289176781631
+start_c_rates esa = 1 ave =  64.10611059203467
+stop_b0_rates esa = 1 ave =  214.2655743843779
+stop_b3_rates esa = 1 ave =  214.35791482912217
+tof0_rates esa = 1 ave =  15.4385520384612
+tof0_tof1_rates esa = 1 ave =  2.562054446523564
+tof0_tof2_rates esa = 1 ave =  1.7069205921631134
+tof1_rates esa = 1 ave =  14.286227716790712
+tof1_tof2_rates esa = 1 ave =  1.7553023796203429
+tof2_rates esa = 1 ave =  3.601063580463836
+tof3_rates esa = 1 ave =  209.8841831918045
+disc_tof0_rates esa = 2 ave =  15.368478025760032
+disc_tof1_rates esa = 2 ave =  14.95373395060623
+disc_tof2_rates esa = 2 ave =  2.9551433860022946
+disc_tof3_rates esa = 2 ave =  0.0029794394069499004
+epoch esa = 2 ave =  None
+esa_mode esa = 2 ave =  0.0
+esa_step esa = 2 ave =  4.0
+esa_step_label esa = 2 ave =  None
+exposure_time_60deg esa = 2 ave =  2.5010663017838297
+exposure_time_6deg esa = 2 ave =  0.25010663017838297
+pos0_rates esa = 2 ave =  0.09939886262808344
+pos1_rates esa = 2 ave =  0.1020066148326791
+pos2_rates esa = 2 ave =  0.10163836282469059
+pos3_rates esa = 2 ave =  0.08674378339527321
+silver_triple_rates esa = 2 ave =  0.0007448544221859157
+spin_bin_6 esa = 2 ave =  29.5
+spin_bin_60 esa = 2 ave =  2.5
+spin_cycle esa = 2 ave =  682643.4078212291
+start_a_rates esa = 2 ave =  170.94473122396826
+start_c_rates esa = 2 ave =  67.77210168571338
+stop_b0_rates esa = 2 ave =  234.03261394492156
+stop_b3_rates esa = 2 ave =  234.13530853826876
+tof0_rates esa = 2 ave =  15.982383761090894
+tof0_tof1_rates esa = 2 ave =  2.8311752513858623
+tof0_tof2_rates esa = 2 ave =  1.9064396463333686
+tof1_rates esa = 2 ave =  15.679663868530845
+tof1_tof2_rates esa = 2 ave =  1.9890843855613916
+tof2_rates esa = 2 ave =  4.0589460222023765
+tof3_rates esa = 2 ave =  229.62322608554146
+disc_tof0_rates esa = 3 ave =  16.19611271056733
+disc_tof1_rates esa = 3 ave =  17.449161117550485
+disc_tof2_rates esa = 3 ave =  3.1300937836461706
+disc_tof3_rates esa = 3 ave =  0.004094243757666873
+epoch esa = 3 ave =  None
+esa_mode esa = 3 ave =  0.0
+esa_step esa = 3 ave =  4.0
+esa_step_label esa = 3 ave =  None
+exposure_time_60deg esa = 3 ave =  2.5010663017838297
+exposure_time_6deg esa = 3 ave =  0.25010663017838297
+pos0_rates esa = 3 ave =  0.26618282898130285
+pos1_rates esa = 3 ave =  0.287015880481596
+pos2_rates esa = 3 ave =  0.26990444340858516
+pos3_rates esa = 3 ave =  0.2144362173921391
+silver_triple_rates esa = 3 ave =  0.0022345729361228166
+spin_bin_6 esa = 3 ave =  29.5
+spin_bin_60 esa = 3 ave =  2.5
+spin_cycle esa = 3 ave =  682645.4078212291
+start_a_rates esa = 3 ave =  183.4399027833032
+start_c_rates esa = 3 ave =  75.39991122234895
+stop_b0_rates esa = 3 ave =  264.89773694512274
+stop_b3_rates esa = 3 ave =  265.2666063679024
+tof0_rates esa = 3 ave =  17.753346350652727
+tof0_tof1_rates esa = 3 ave =  3.555635113056672
+tof0_tof2_rates esa = 3 ave =  2.60630748678457
+tof1_rates esa = 3 ave =  19.078249735188372
+tof1_tof2_rates esa = 3 ave =  2.7470369031556974
+tof2_rates esa = 3 ave =  5.470600251190958
+tof3_rates esa = 3 ave =  260.49400753403256
+disc_tof0_rates esa = 4 ave =  16.011156505488664
+disc_tof1_rates esa = 4 ave =  17.247920414838593
+disc_tof2_rates esa = 4 ave =  3.1491422859229634
+disc_tof3_rates esa = 4 ave =  0.003722642035135854
+epoch esa = 4 ave =  None
+esa_mode esa = 4 ave =  0.0
+esa_step esa = 4 ave =  4.0
+esa_step_label esa = 4 ave =  None
+exposure_time_60deg esa = 4 ave =  2.5010663017838297
+exposure_time_6deg esa = 4 ave =  0.25010663017838297
+pos0_rates esa = 4 ave =  0.16379746515112117
+pos1_rates esa = 4 ave =  0.15374687036406998
+pos2_rates esa = 4 ave =  0.17347764041325014
+pos3_rates esa = 4 ave =  0.16863678387528577
+silver_triple_rates esa = 4 ave =  0.0007440316377600942
+spin_bin_6 esa = 4 ave =  29.5
+spin_bin_60 esa = 4 ave =  2.5
+spin_cycle esa = 4 ave =  682647.4078212291
+start_a_rates esa = 4 ave =  177.48117044967418
+start_c_rates esa = 4 ave =  72.20242322065882
+stop_b0_rates esa = 4 ave =  255.84468850551028
+stop_b3_rates esa = 4 ave =  256.2211353519926
+tof0_rates esa = 4 ave =  17.015547706047048
+tof0_tof1_rates esa = 4 ave =  3.224337039400691
+tof0_tof2_rates esa = 4 ave =  2.2072536086518673
+tof1_rates esa = 4 ave =  18.295131752384204
+tof1_tof2_rates esa = 4 ave =  2.4049359041851774
+tof2_rates esa = 4 ave =  4.631182079597515
+tof3_rates esa = 4 ave =  251.5482193017556
+disc_tof0_rates esa = 5 ave =  15.45451267333366
+disc_tof1_rates esa = 5 ave =  16.585467124173224
+disc_tof2_rates esa = 5 ave =  3.080602535151527
+disc_tof3_rates esa = 5 ave =  0.002607006433515294
+epoch esa = 5 ave =  None
+esa_mode esa = 5 ave =  0.0
+esa_step esa = 5 ave =  4.0
+esa_step_label esa = 5 ave =  None
+exposure_time_60deg esa = 5 ave =  2.5010663017838297
+exposure_time_6deg esa = 5 ave =  0.25010663017838297
+pos0_rates esa = 5 ave =  0.007444455369337275
+pos1_rates esa = 5 ave =  0.009681503728357473
+pos2_rates esa = 5 ave =  0.00893499854739305
+pos3_rates esa = 5 ave =  0.00967902167865661
+silver_triple_rates esa = 5 ave =  0.00037242942830879665
+spin_bin_6 esa = 5 ave =  29.5
+spin_bin_60 esa = 5 ave =  2.5
+spin_cycle esa = 5 ave =  682649.4078212291
+start_a_rates esa = 5 ave =  169.32810527720932
+start_c_rates esa = 5 ave =  71.44002720634052
+stop_b0_rates esa = 5 ave =  240.8810382920036
+stop_b3_rates esa = 5 ave =  241.20045056684262
+tof0_rates esa = 5 ave =  15.552060010386809
+tof0_tof1_rates esa = 5 ave =  2.535582080185821
+tof0_tof2_rates esa = 5 ave =  1.527834578530171
+tof1_rates esa = 5 ave =  16.77905712321618
+tof1_tof2_rates esa = 5 ave =  1.7325785286709732
+tof2_rates esa = 5 ave =  3.385886894994995
+tof3_rates esa = 5 ave =  236.66489052790735
+disc_tof0_rates esa = 6 ave =  15.275528052547793
+disc_tof1_rates esa = 6 ave =  16.085098672287167
+disc_tof2_rates esa = 6 ave =  3.0222030931311097
+disc_tof3_rates esa = 6 ave =  0.0018621460908532562
+epoch esa = 6 ave =  None
+esa_mode esa = 6 ave =  0.0
+esa_step esa = 6 ave =  4.0
+esa_step_label esa = 6 ave =  None
+exposure_time_60deg esa = 6 ave =  2.5010663017838297
+exposure_time_6deg esa = 6 ave =  0.25010663017838297
+pos0_rates esa = 6 ave =  0.0022337505780274207
+pos1_rates esa = 6 ave =  0.002978606546897667
+pos2_rates esa = 6 ave =  0.004839931271436609
+pos3_rates esa = 6 ave =  0.006327991243660552
+silver_triple_rates esa = 6 ave =  0.0003724294584874063
+spin_bin_6 esa = 6 ave =  29.5
+spin_bin_60 esa = 6 ave =  2.5
+spin_cycle esa = 6 ave =  682651.4078212291
+start_a_rates esa = 6 ave =  166.2369764916153
+start_c_rates esa = 6 ave =  67.02538969755406
+stop_b0_rates esa = 6 ave =  241.45537431569053
+stop_b3_rates esa = 6 ave =  241.72232013230354
+tof0_rates esa = 6 ave =  15.32913553394346
+tof0_tof1_rates esa = 6 ave =  2.442155672967742
+tof0_tof2_rates esa = 6 ave =  1.3997766764158732
+tof1_rates esa = 6 ave =  16.21912093283791
+tof1_tof2_rates esa = 6 ave =  1.6261316399586763
+tof2_rates esa = 6 ave =  3.2109476795329437
+tof3_rates esa = 6 ave =  237.0896236088414
+disc_tof0_rates esa = 7 ave =  16.18565929650446
+disc_tof1_rates esa = 7 ave =  19.33660358588509
+disc_tof2_rates esa = 7 ave =  3.2175859330667507
+disc_tof3_rates esa = 7 ave =  0.0011172867687045485
+epoch esa = 7 ave =  None
+esa_mode esa = 7 ave =  0.0
+esa_step esa = 7 ave =  4.0
+esa_step_label esa = 7 ave =  None
+exposure_time_60deg esa = 7 ave =  2.5010663017838297
+exposure_time_6deg esa = 7 ave =  0.25010663017838297
+pos0_rates esa = 7 ave =  0.007445280758312399
+pos1_rates esa = 7 ave =  0.007445281817186709
+pos2_rates esa = 7 ave =  0.010048776888767333
+pos3_rates esa = 7 ave =  0.011169582259449645
+silver_triple_rates esa = 7 ave =  0.00037242885459902995
+spin_bin_6 esa = 7 ave =  29.5
+spin_bin_60 esa = 7 ave =  2.5
+spin_cycle esa = 7 ave =  682653.4078212291
+start_a_rates esa = 7 ave =  181.43675916514383
+start_c_rates esa = 7 ave =  76.68280568438041
+stop_b0_rates esa = 7 ave =  300.63193705205936
+stop_b3_rates esa = 7 ave =  301.08271631029424
+tof0_rates esa = 7 ave =  16.26011521732565
+tof0_tof1_rates esa = 7 ave =  2.5363350212397022
+tof0_tof2_rates esa = 7 ave =  1.4492563436332078
+tof1_rates esa = 7 ave =  19.479926344133073
+tof1_tof2_rates esa = 7 ave =  1.7191524411274264
+tof2_rates esa = 7 ave =  3.371710090858085
+tof3_rates esa = 7 ave =  296.0939370392169
+ 
+ 
+disc_tof0_rates ALL esa, Ave =  15.64152665169365
+disc_tof1_rates ALL esa, Ave =  16.483683760485338
+disc_tof2_rates ALL esa, Ave =  3.0478482976346046
+disc_tof3_rates ALL esa, Ave =  0.0029787279882065457
+exposure_time_60deg ALL esa, Ave =  2.5010663017838297
+exposure_time_6deg ALL esa, Ave =  0.25010663017838297
+pos0_rates ALL esa, Ave =  0.0857306095882111
+pos1_rates ALL esa, Ave =  0.09152622191825364
+pos2_rates ALL esa, Ave =  0.08987941655155718
+pos3_rates ALL esa, Ave =  0.07668999714171294
+silver_triple_rates ALL esa, Ave =  0.0007447394156418151
+start_a_rates ALL esa, Ave =  173.356651867011
+start_c_rates ALL esa, Ave =  70.66125275843297
+stop_b0_rates ALL esa, Ave =  250.286994777098
+stop_b3_rates ALL esa, Ave =  250.56949315667518
+tof0_rates ALL esa, Ave =  16.1901629454154
+tof0_tof1_rates ALL esa, Ave =  2.812467803537151
+tof0_tof2_rates ALL esa, Ave =  1.8291127046445963
+tof1_rates ALL esa, Ave =  17.116768210440185
+tof1_tof2_rates ALL esa, Ave =  1.9963174546113833
+tof2_rates ALL esa, Ave =  3.961476656977244
+tof3_rates ALL esa, Ave =  245.9140124698714

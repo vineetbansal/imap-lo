@@ -1,0 +1,70 @@
+Source ~/.zshrc
+Source ~/.bashrc
+
+conda activate mapenv
+conda install -c conda-forge reproject
+
+
+
+conda create -n spacepy-env python=3.11
+conda activate spacepy-env
+
+pip install spacepy
+
+Cardinal points:
+
+	label[0] = "Nose"
+	label[1] = "V1"
+	label[2] = "V2"
+	label[3] = "Tail"
+
+	ra[0] = +255.042495
+	ra[1] = +257.888590
+	ra[2] = +300.352598
+	ra[3] = +75.042495
+
+	dec[0] = -17.599851
+	dec[1] = +12.168353
+	dec[2] = -56.971462
+	dec[3] = +17.599851
+
+	label[0] = "Upwind (HEL)"
+	label[1] = "V1"
+	label[2] = "V2"
+	label[3] = "Downwind (HEL)"
+	label[4] = "Upfield" ; field based on 221,39 (ECLIP COORDS) dir
+	label[5] = "Downfield"
+        label[6] = "Upwind (LSR)"
+        label[7] = "Downwind (LSR)"
+   
+; Bzowski values .. 
+	ra[0] = 258.69
+;        ra[0] = 254.7
+	ra[1] = +257.888590
+	ra[2] = +300.352598
+	ra[3] = 78.69
+        ra[4] = 230.76
+        ra[5] = 50.76
+        ra[6] = 237.3
+        ra[7] = 57.3 
+
+	dec[0] = -17.9
+	dec[1] = +12.168353
+	dec[2] = -56.971462
+	dec[3] = 17.9
+        dec[4] = 22.0
+        dec[5] = -22.0
+        dec[6] = -62.5
+        dec[7] = 62.5
+
+Upwind: +259.200622 +5.116296
+V1: +255.499300 +34.999941
+V2: +289.800000 -35.600000
+Downwind: +79.200622 -5.116296
+ribbon center:  +221 +39
+Downfield (from ribbon center): 41 -39
+Upwind (LSR): +250.624523 -41.242979
+Downwind (LSR): +70.624523 +41.242979
+Starboard: 150,0 
+Port: 0,0 
+

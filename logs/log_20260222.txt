@@ -1,0 +1,563 @@
+1S07_CDF_l1c_position_velocity Processing file: ../input_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006.cdf
+1S07_CDF_l1c_position_velocity Output H file: ./output_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006
+   l1c_reader.py input: ../input_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006.cdf
+   l1c_reader.py output: ./output_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006
+1S07_CDF_l1c_position_velocity Processing file: ../input_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004.cdf
+1S07_CDF_l1c_position_velocity Output H file: ./output_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004
+   l1c_reader.py input: ../input_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004.cdf
+   l1c_reader.py output: ./output_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004
+1S07_CDF_l1c_position_velocity Processing file: ../input_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005.cdf
+1S07_CDF_l1c_position_velocity Output H file: ./output_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005
+   l1c_reader.py input: ../input_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005.cdf
+   l1c_reader.py output: ./output_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005
+1S07_CDF_l1c_position_velocity Processing file: ../input_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003.cdf
+1S07_CDF_l1c_position_velocity Output H file: ./output_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003
+   l1c_reader.py input: ../input_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003.cdf
+   l1c_reader.py output: ./output_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003
+1S07_CDF_l1c_position_velocity Processing file: ../input_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003.cdf
+1S07_CDF_l1c_position_velocity Output H file: ./output_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003
+   l1c_reader.py input: ../input_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003.cdf
+   l1c_reader.py output: ./output_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003
+1S11 Processing file: ../input_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006.cdf
+   1S11 cnts_v1_pset.py input: ../input_l1c/imap_lo_l1c_pset_20260207-repoint00150_v006.cdf
+1S11 Processing file: ../input_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004.cdf
+   1S11 cnts_v1_pset.py input: ../input_l1c/imap_lo_l1c_pset_20260206-repoint00149_v004.cdf
+1S11 Processing file: ../input_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005.cdf
+   1S11 cnts_v1_pset.py input: ../input_l1c/imap_lo_l1c_pset_20260204-repoint00147_v005.cdf
+1S11 Processing file: ../input_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003.cdf
+   1S11 cnts_v1_pset.py input: ../input_l1c/imap_lo_l1c_pset_20260205-repoint00148_v003.cdf
+1S11 Processing file: ../input_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003.cdf
+   1S11 cnts_v1_pset.py input: ../input_l1c/imap_lo_l1c_pset_20260208-repoint00151_v003.cdf
+Restored session: Sun Feb 22 22:34:29 EST 2026
+3S2_l1b_quickmaps L1B histrates to spin angle distribution Started 
+Processing DOY: 2025356
+Processing DOY: 2026035
+Processing DOY: 2025313
+Processing DOY: 2025315
+Skipping imap_lo_l1b_histrates_20251111-repoint00045_v002.cdf: No matching rows found for 2025315 in Goodtime file
+Processing DOY: 2026023
+Processing DOY: 2025355
+Processing DOY: 2025337
+Processing DOY: 2025348
+Processing DOY: 2026001
+Processing DOY: 2026028
+Skipping imap_lo_l1b_histrates_20260128-repoint00140_v003.cdf: No matching rows found for 2026028 in Goodtime file
+Processing DOY: 2025331
+Processing DOY: 2025344
+Skipping imap_lo_l1b_histrates_20251210-repoint00074_v002.cdf: No matching rows found for 2025344 in Goodtime file
+Processing DOY: 2025319
+Skipping imap_lo_l1b_histrates_20251115-repoint00049_v002.cdf: No matching rows found for 2025319 in Goodtime file
+Processing DOY: 2026027
+Processing DOY: 2025338
+Processing DOY: 2025342
+Processing DOY: 2026048
+Skipping imap_lo_l1b_histrates_20260217-repoint00160_v002.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026045
+Skipping imap_lo_l1b_histrates_20260214-repoint00157_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026014
+Processing DOY: 2025365
+Processing DOY: 2025347
+Processing DOY: 2025363
+Processing DOY: 2025323
+Skipping imap_lo_l1b_histrates_20251119-repoint00053_v002.cdf: No matching rows found for 2025323 in Goodtime file
+Processing DOY: 2026024
+Processing DOY: 2026040
+Processing DOY: 2026021
+Processing DOY: 2026042
+Processing DOY: 2026036
+Processing DOY: 2026031
+Processing DOY: 2026017
+Processing DOY: 2025310
+Skipping imap_lo_l1b_histrates_20251106-repoint00040_v002.cdf: No matching rows found for 2025310 in Goodtime file
+Processing DOY: 2026018
+Processing DOY: 2025332
+Processing DOY: 2025334
+Processing DOY: 2025329
+Skipping imap_lo_l1b_histrates_20251125-repoint00059_v002.cdf: No matching rows found for 2025329 in Goodtime file
+Processing DOY: 2026039
+Processing DOY: 2026013
+Processing DOY: 2026032
+Processing DOY: 2025341
+Skipping imap_lo_l1b_histrates_20251207-repoint00071_v001.cdf: No matching rows found for 2025341 in Goodtime file
+Processing DOY: 2025360
+Processing DOY: 2026046
+Skipping imap_lo_l1b_histrates_20260215-repoint00158_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025336
+Processing DOY: 2025307
+Skipping imap_lo_l1b_histrates_20251103-repoint00037_v002.cdf: No matching rows found for 2025307 in Goodtime file
+Processing DOY: 2025349
+Processing DOY: 2025335
+Processing DOY: 2026029
+Processing DOY: 2025330
+Processing DOY: 2025351
+Processing DOY: 2026038
+Processing DOY: 2025312
+Processing DOY: 2025354
+Processing DOY: 2025314
+Processing DOY: 2026022
+Processing DOY: 2026041
+Processing DOY: 2025364
+Processing DOY: 2026015
+Skipping imap_lo_l1b_histrates_20260115-repoint00127_v001.cdf: No matching rows found for 2026015 in Goodtime file
+Processing DOY: 2025322
+Skipping imap_lo_l1b_histrates_20251118-repoint00052_v002.cdf: No matching rows found for 2025322 in Goodtime file
+Processing DOY: 2025362
+Processing DOY: 2025339
+Processing DOY: 2026041
+Processing DOY: 2025345
+Skipping imap_lo_l1b_histrates_20251211-repoint00075_v002.cdf: No matching rows found for 2025345 in Goodtime file
+Processing DOY: 2025343
+Processing DOY: 2025318
+Skipping imap_lo_l1b_histrates_20251114-repoint00048_v002.cdf: No matching rows found for 2025318 in Goodtime file
+Processing DOY: 2025346
+Processing DOY: 2026026
+Processing DOY: 2026044
+Processing DOY: 2026047
+Skipping imap_lo_l1b_histrates_20260216-repoint00159_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026019
+Processing DOY: 2025333
+Processing DOY: 2025328
+Skipping imap_lo_l1b_histrates_20251124-repoint00058_v002.cdf: No matching rows found for 2025328 in Goodtime file
+Processing DOY: 2026020
+Processing DOY: 2026030
+Processing DOY: 2026025
+Processing DOY: 2026049
+Skipping imap_lo_l1b_histrates_20260218-repoint00161_v002.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025352
+Processing DOY: 2025311
+Skipping imap_lo_l1b_histrates_20251107-repoint00041_v002.cdf: No matching rows found for 2025311 in Goodtime file
+Processing DOY: 2026033
+Processing DOY: 2026016
+Processing DOY: 2026050
+Skipping imap_lo_l1b_histrates_20260219-repoint00162_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025340
+Processing DOY: 2025321
+Skipping imap_lo_l1b_histrates_20251117-repoint00051_v002.cdf: No matching rows found for 2025321 in Goodtime file
+Processing DOY: 2025361
+Processing DOY: 2025327
+Skipping imap_lo_l1b_histrates_20251123-repoint00057_v002.cdf: No matching rows found for 2025327 in Goodtime file
+Processing DOY: 2025324
+Skipping imap_lo_l1b_histrates_20251120-repoint00054_v002.cdf: No matching rows found for 2025324 in Goodtime file
+Processing DOY: 2026037
+Processing DOY: 2026043
+Making Maps for Pivot 75
+1
+2
+3
+4
+5
+6
+7
+Making Maps for Pivot 90
+1
+2
+3
+4
+5
+6
+7
+Making Maps for Pivot 105
+1
+2
+3
+4
+5
+6
+7
+Converted Maps for Pivot 75
+Converted Maps for Pivot 90
+Converted Maps for Pivot 105
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+Restored session: Sun Feb 22 22:35:17 EST 2026
+3S3_l1b_Oxy_quickmaps L1B histrates to spin angle distribution Started 
+Processing DOY: 2025356
+Processing DOY: 2026035
+Processing DOY: 2025313
+Processing DOY: 2025315
+Skipping imap_lo_l1b_histrates_20251111-repoint00045_v002.cdf: No matching rows found for 2025315 in Goodtime file
+Processing DOY: 2026023
+Processing DOY: 2025355
+Processing DOY: 2025337
+Processing DOY: 2025348
+Processing DOY: 2026001
+Processing DOY: 2026028
+Skipping imap_lo_l1b_histrates_20260128-repoint00140_v003.cdf: No matching rows found for 2026028 in Goodtime file
+Processing DOY: 2025331
+Processing DOY: 2025344
+Skipping imap_lo_l1b_histrates_20251210-repoint00074_v002.cdf: No matching rows found for 2025344 in Goodtime file
+Processing DOY: 2025319
+Skipping imap_lo_l1b_histrates_20251115-repoint00049_v002.cdf: No matching rows found for 2025319 in Goodtime file
+Processing DOY: 2026027
+Processing DOY: 2025338
+Processing DOY: 2025342
+Processing DOY: 2026048
+Skipping imap_lo_l1b_histrates_20260217-repoint00160_v002.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026045
+Skipping imap_lo_l1b_histrates_20260214-repoint00157_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026014
+Processing DOY: 2025365
+Processing DOY: 2025347
+Processing DOY: 2025363
+Processing DOY: 2025323
+Skipping imap_lo_l1b_histrates_20251119-repoint00053_v002.cdf: No matching rows found for 2025323 in Goodtime file
+Processing DOY: 2026024
+Processing DOY: 2026040
+Processing DOY: 2026021
+Processing DOY: 2026042
+Processing DOY: 2026036
+Processing DOY: 2026031
+Processing DOY: 2026017
+Processing DOY: 2025310
+Skipping imap_lo_l1b_histrates_20251106-repoint00040_v002.cdf: No matching rows found for 2025310 in Goodtime file
+Processing DOY: 2026018
+Processing DOY: 2025332
+Processing DOY: 2025334
+Processing DOY: 2025329
+Skipping imap_lo_l1b_histrates_20251125-repoint00059_v002.cdf: No matching rows found for 2025329 in Goodtime file
+Processing DOY: 2026039
+Processing DOY: 2026013
+Processing DOY: 2026032
+Processing DOY: 2025341
+Skipping imap_lo_l1b_histrates_20251207-repoint00071_v001.cdf: No matching rows found for 2025341 in Goodtime file
+Processing DOY: 2025360
+Processing DOY: 2026046
+Skipping imap_lo_l1b_histrates_20260215-repoint00158_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025336
+Processing DOY: 2025307
+Skipping imap_lo_l1b_histrates_20251103-repoint00037_v002.cdf: No matching rows found for 2025307 in Goodtime file
+Processing DOY: 2025349
+Processing DOY: 2025335
+Processing DOY: 2026029
+Processing DOY: 2025330
+Processing DOY: 2025351
+Processing DOY: 2026038
+Processing DOY: 2025312
+Processing DOY: 2025354
+Processing DOY: 2025314
+Processing DOY: 2026022
+Processing DOY: 2026041
+Processing DOY: 2025364
+Processing DOY: 2026015
+Skipping imap_lo_l1b_histrates_20260115-repoint00127_v001.cdf: No matching rows found for 2026015 in Goodtime file
+Processing DOY: 2025322
+Skipping imap_lo_l1b_histrates_20251118-repoint00052_v002.cdf: No matching rows found for 2025322 in Goodtime file
+Processing DOY: 2025362
+Processing DOY: 2025339
+Processing DOY: 2026041
+Processing DOY: 2025345
+Skipping imap_lo_l1b_histrates_20251211-repoint00075_v002.cdf: No matching rows found for 2025345 in Goodtime file
+Processing DOY: 2025343
+Processing DOY: 2025318
+Skipping imap_lo_l1b_histrates_20251114-repoint00048_v002.cdf: No matching rows found for 2025318 in Goodtime file
+Processing DOY: 2025346
+Processing DOY: 2026026
+Processing DOY: 2026044
+Processing DOY: 2026047
+Skipping imap_lo_l1b_histrates_20260216-repoint00159_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2026019
+Processing DOY: 2025333
+Processing DOY: 2025328
+Skipping imap_lo_l1b_histrates_20251124-repoint00058_v002.cdf: No matching rows found for 2025328 in Goodtime file
+Processing DOY: 2026020
+Processing DOY: 2026030
+Processing DOY: 2026025
+Processing DOY: 2026049
+Skipping imap_lo_l1b_histrates_20260218-repoint00161_v002.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025352
+Processing DOY: 2025311
+Skipping imap_lo_l1b_histrates_20251107-repoint00041_v002.cdf: No matching rows found for 2025311 in Goodtime file
+Processing DOY: 2026033
+Processing DOY: 2026016
+Processing DOY: 2026050
+Skipping imap_lo_l1b_histrates_20260219-repoint00162_v001.cdf: index 0 is out of bounds for axis 0 with size 0
+Processing DOY: 2025340
+Processing DOY: 2025321
+Skipping imap_lo_l1b_histrates_20251117-repoint00051_v002.cdf: No matching rows found for 2025321 in Goodtime file
+Processing DOY: 2025361
+Processing DOY: 2025327
+Skipping imap_lo_l1b_histrates_20251123-repoint00057_v002.cdf: No matching rows found for 2025327 in Goodtime file
+Processing DOY: 2025324
+Skipping imap_lo_l1b_histrates_20251120-repoint00054_v002.cdf: No matching rows found for 2025324 in Goodtime file
+Processing DOY: 2026037
+Processing DOY: 2026043
+Making Maps for Pivot 75
+1
+2
+3
+4
+5
+6
+7
+Making Maps for Pivot 90
+1
+2
+3
+4
+5
+6
+7
+Making Maps for Pivot 105
+1
+2
+3
+4
+5
+6
+7
+Converted Maps for Pivot 75
+Converted Maps for Pivot 90
+Converted Maps for Pivot 105
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+1
+expo
+rate
+flux
+cnts
+2
+expo
+rate
+flux
+cnts
+3
+expo
+rate
+flux
+cnts
+4
+expo
+rate
+flux
+cnts
+5
+expo
+rate
+flux
+cnts
+6
+expo
+rate
+flux
+cnts
+7
+expo
+rate
+flux
+cnts
+building file list ... done
+./
+log_20260222.txt
+
+sent 2096674 bytes  received 48 bytes  838688.80 bytes/sec
+total size is 3722335423  speedup is 1775.31
+building file list ... 
+ 0 files... 100 files... 200 files... 300 files...351 files to consider
+imap_lo_HO_cnts_expo.csv
+       23504 100%    0.00kB/s    0:00:00       23504 100%    0.00kB/s    0:00:00 (xfer#1, to-check=348/351)
+imap_lo_H_background.csv
+       18732 100%   17.86MB/s    0:00:00       18732 100%   17.86MB/s    0:00:00 (xfer#2, to-check=263/351)
+imap_lo_O_background.csv
+       18732 100%   17.86MB/s    0:00:00       18732 100%   17.86MB/s    0:00:00 (xfer#3, to-check=178/351)
+imap_lo_goodtimes.csv
+       25380 100%   24.20MB/s    0:00:00       25380 100%   24.20MB/s    0:00:00 (xfer#4, to-check=93/351)
+imap_lo_goodtimes_ideas.csv
+        3842 100%    3.66MB/s    0:00:00        3842 100%    3.66MB/s    0:00:00 (xfer#5, to-check=8/351)
+
+sent 100206 bytes  received 130 bytes  200672.00 bytes/sec
+total size is 187662  speedup is 1.87
+building file list ... 
+ 0 files...2 files to consider
+imap_lo_goodtimes.csv
+       25380 100%    0.00kB/s    0:00:00       25380 100%    0.00kB/s    0:00:00 (xfer#1, to-check=0/2)
+
+sent 25538 bytes  received 42 bytes  51160.00 bytes/sec
+total size is 25380  speedup is 0.99
+building file list ... 
+ 0 files...57 files to consider
+imap_lo_position.csv
+       15863 100%    0.00kB/s    0:00:00       15863 100%    0.00kB/s    0:00:00 (xfer#1, to-check=54/57)
+imap_lo_position_2026035.csv
+         426 100%  416.02kB/s    0:00:00         426 100%  416.02kB/s    0:00:00 (xfer#2, to-check=12/57)
+imap_lo_position_2026036.csv
+         429 100%  418.95kB/s    0:00:00         429 100%  418.95kB/s    0:00:00 (xfer#3, to-check=11/57)
+imap_lo_position_2026037.csv
+         426 100%  416.02kB/s    0:00:00         426 100%  416.02kB/s    0:00:00 (xfer#4, to-check=10/57)
+imap_lo_position_2026038.csv
+         423 100%  413.09kB/s    0:00:00         423 100%  413.09kB/s    0:00:00 (xfer#5, to-check=9/57)
+imap_lo_position_2026039.csv
+         427 100%  416.99kB/s    0:00:00         427 100%  416.99kB/s    0:00:00 (xfer#6, to-check=8/57)
+
+sent 19373 bytes  received 152 bytes  39050.00 bytes/sec
+total size is 45771  speedup is 2.34

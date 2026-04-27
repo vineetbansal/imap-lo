@@ -1,0 +1,13 @@
+./driver.sh imap_lo_goodtimes_ideas_EMrun1.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun2.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun3.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun4.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun5.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun6.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun7.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun8.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun9.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun10.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun11.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun12.csv
+./driver.sh imap_lo_goodtimes_ideas_EMrun13.csv

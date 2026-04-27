@@ -1,0 +1,235 @@
+Processing file: ./input/imap_lo_l1c_pset_20260121-repoint00133_v999.cdf
+Output H file: ./output/imap_lo_l1c_pset_20260121-repoint00133_v999
+input: ./input/imap_lo_l1c_pset_20260121-repoint00133_v999.cdf
+output: ./output/imap_lo_l1c_pset_20260121-repoint00133_v999
+doubles_counts esa = 1 ave =  0.006375
+end_spin_number esa = 1 ave =  685470.0
+epoch esa = 1 ave =  None
+esa_energy_step esa = 1 ave =  4.0
+esa_mode esa = 1 ave =  0.0
+exposure_time esa = 1 ave =  0.07517361
+h_background_rates esa = 1 ave =  0.009803772
+h_background_rates_stat_uncert esa = 1 ave =  0.0
+h_background_rates_sys_err esa = 1 ave =  0.002500534
+h_counts esa = 1 ave =  0.0022083333333333334
+hae_latitude esa = 1 ave =  -3.926497375909498e-05
+hae_longitude esa = 1 ave =  119.43946126644263
+o_background_rates esa = 1 ave =  0.0
+o_background_rates_stat_uncert esa = 1 ave =  0.0
+o_background_rates_sys_err esa = 1 ave =  0.0
+o_counts esa = 1 ave =  0.0017777777777777779
+off_angle esa = 1 ave =  9.992007221626409e-17
+pivot_angle esa = 1 ave =  90.00913718999999
+pointing_end_met esa = 1 ave =  506772011.0
+pointing_start_met esa = 1 ave =  506685785.0
+sc_direction_vector esa = 1 ave =  -0.45741358660092396
+sc_velocity esa = 1 ave =  -13.663396937699575
+spin_angle esa = 1 ave =  180.0
+start_spin_number esa = 1 ave =  679724.0
+triples_counts esa = 1 ave =  0.004333333333333333
+doubles_counts esa = 2 ave =  0.0090625
+end_spin_number esa = 2 ave =  685470.0
+epoch esa = 2 ave =  None
+esa_energy_step esa = 2 ave =  4.0
+esa_mode esa = 2 ave =  0.0
+exposure_time esa = 2 ave =  0.07517361
+h_background_rates esa = 2 ave =  0.008903503
+h_background_rates_stat_uncert esa = 2 ave =  0.0
+h_background_rates_sys_err esa = 2 ave =  0.0020008087
+h_counts esa = 2 ave =  0.003159722222222222
+hae_latitude esa = 2 ave =  -3.926497375909498e-05
+hae_longitude esa = 2 ave =  119.43946126644263
+o_background_rates esa = 2 ave =  0.0
+o_background_rates_stat_uncert esa = 2 ave =  0.0
+o_background_rates_sys_err esa = 2 ave =  0.0
+o_counts esa = 2 ave =  0.0035208333333333333
+off_angle esa = 2 ave =  9.992007221626409e-17
+pivot_angle esa = 2 ave =  90.00913718999999
+pointing_end_met esa = 2 ave =  506772011.0
+pointing_start_met esa = 2 ave =  506685785.0
+sc_direction_vector esa = 2 ave =  -0.45741358660092396
+sc_velocity esa = 2 ave =  -13.663396937699575
+spin_angle esa = 2 ave =  180.0
+start_spin_number esa = 2 ave =  679724.0
+triples_counts esa = 2 ave =  0.007284722222222222
+doubles_counts esa = 3 ave =  0.018958333333333334
+end_spin_number esa = 3 ave =  685470.0
+epoch esa = 3 ave =  None
+esa_energy_step esa = 3 ave =  4.0
+esa_mode esa = 3 ave =  0.0
+exposure_time esa = 3 ave =  0.07517361
+h_background_rates esa = 3 ave =  0.011802673
+h_background_rates_stat_uncert esa = 3 ave =  0.0
+h_background_rates_sys_err esa = 3 ave =  0.0015001297
+h_counts esa = 3 ave =  0.007097222222222223
+hae_latitude esa = 3 ave =  -3.926497375909498e-05
+hae_longitude esa = 3 ave =  119.43946126644263
+o_background_rates esa = 3 ave =  0.0
+o_background_rates_stat_uncert esa = 3 ave =  0.0
+o_background_rates_sys_err esa = 3 ave =  0.0
+o_counts esa = 3 ave =  0.010555555555555556
+off_angle esa = 3 ave =  9.992007221626409e-17
+pivot_angle esa = 3 ave =  90.00913718999999
+pointing_end_met esa = 3 ave =  506772011.0
+pointing_start_met esa = 3 ave =  506685785.0
+sc_direction_vector esa = 3 ave =  -0.45741358660092396
+sc_velocity esa = 3 ave =  -13.663396937699575
+spin_angle esa = 3 ave =  180.0
+start_spin_number esa = 3 ave =  679724.0
+triples_counts esa = 3 ave =  0.019375
+doubles_counts esa = 4 ave =  0.011284722222222222
+end_spin_number esa = 4 ave =  685470.0
+epoch esa = 4 ave =  None
+esa_energy_step esa = 4 ave =  4.0
+esa_mode esa = 4 ave =  0.0
+exposure_time esa = 4 ave =  0.07517361
+h_background_rates esa = 4 ave =  0.011299133
+h_background_rates_stat_uncert esa = 4 ave =  0.0
+h_background_rates_sys_err esa = 4 ave =  0.0015001297
+h_counts esa = 4 ave =  0.0059097222222222225
+hae_latitude esa = 4 ave =  -3.926497375909498e-05
+hae_longitude esa = 4 ave =  119.43946126644263
+o_background_rates esa = 4 ave =  0.0
+o_background_rates_stat_uncert esa = 4 ave =  0.0
+o_background_rates_sys_err esa = 4 ave =  0.0
+o_counts esa = 4 ave =  0.0055069444444444445
+off_angle esa = 4 ave =  9.992007221626409e-17
+pivot_angle esa = 4 ave =  90.00913718999999
+pointing_end_met esa = 4 ave =  506772011.0
+pointing_start_met esa = 4 ave =  506685785.0
+sc_direction_vector esa = 4 ave =  -0.45741358660092396
+sc_velocity esa = 4 ave =  -13.663396937699575
+spin_angle esa = 4 ave =  180.0
+start_spin_number esa = 4 ave =  679724.0
+triples_counts esa = 4 ave =  0.012326388888888888
+doubles_counts esa = 5 ave =  0.002298611111111111
+end_spin_number esa = 5 ave =  685470.0
+epoch esa = 5 ave =  None
+esa_energy_step esa = 5 ave =  4.0
+esa_mode esa = 5 ave =  0.0
+exposure_time esa = 5 ave =  0.07517361
+h_background_rates esa = 5 ave =  0.0055999756
+h_background_rates_stat_uncert esa = 5 ave =  0.0
+h_background_rates_sys_err esa = 5 ave =  0.0010004044
+h_counts esa = 5 ave =  0.0004166666666666667
+hae_latitude esa = 5 ave =  -3.926497375909498e-05
+hae_longitude esa = 5 ave =  119.43946126644263
+o_background_rates esa = 5 ave =  0.0
+o_background_rates_stat_uncert esa = 5 ave =  0.0
+o_background_rates_sys_err esa = 5 ave =  0.0
+o_counts esa = 5 ave =  0.00019444444444444443
+off_angle esa = 5 ave =  9.992007221626409e-17
+pivot_angle esa = 5 ave =  90.00913718999999
+pointing_end_met esa = 5 ave =  506772011.0
+pointing_start_met esa = 5 ave =  506685785.0
+sc_direction_vector esa = 5 ave =  -0.45741358660092396
+sc_velocity esa = 5 ave =  -13.663396937699575
+spin_angle esa = 5 ave =  180.0
+start_spin_number esa = 5 ave =  679724.0
+triples_counts esa = 5 ave =  0.0006736111111111112
+doubles_counts esa = 6 ave =  0.0014027777777777777
+end_spin_number esa = 6 ave =  685470.0
+epoch esa = 6 ave =  None
+esa_energy_step esa = 6 ave =  4.0
+esa_mode esa = 6 ave =  0.0
+exposure_time esa = 6 ave =  0.07517361
+h_background_rates esa = 6 ave =  0.00080013275
+h_background_rates_stat_uncert esa = 6 ave =  0.0
+h_background_rates_sys_err esa = 6 ave =  0.00080013275
+h_counts esa = 6 ave =  0.00017361111111111112
+hae_latitude esa = 6 ave =  -3.926497375909498e-05
+hae_longitude esa = 6 ave =  119.43946126644263
+o_background_rates esa = 6 ave =  0.0
+o_background_rates_stat_uncert esa = 6 ave =  0.0
+o_background_rates_sys_err esa = 6 ave =  0.0
+o_counts esa = 6 ave =  0.00010416666666666667
+off_angle esa = 6 ave =  9.992007221626409e-17
+pivot_angle esa = 6 ave =  90.00913718999999
+pointing_end_met esa = 6 ave =  506772011.0
+pointing_start_met esa = 6 ave =  506685785.0
+sc_direction_vector esa = 6 ave =  -0.45741358660092396
+sc_velocity esa = 6 ave =  -13.663396937699575
+spin_angle esa = 6 ave =  180.0
+start_spin_number esa = 6 ave =  679724.0
+triples_counts esa = 6 ave =  0.0002986111111111111
+doubles_counts esa = 7 ave =  0.0010972222222222223
+end_spin_number esa = 7 ave =  685470.0
+epoch esa = 7 ave =  None
+esa_energy_step esa = 7 ave =  4.0
+esa_mode esa = 7 ave =  0.0
+exposure_time esa = 7 ave =  0.07517361
+h_background_rates esa = 7 ave =  0.0
+h_background_rates_stat_uncert esa = 7 ave =  0.0
+h_background_rates_sys_err esa = 7 ave =  0.0
+h_counts esa = 7 ave =  0.00044444444444444447
+hae_latitude esa = 7 ave =  -3.926497375909498e-05
+hae_longitude esa = 7 ave =  119.43946126644263
+o_background_rates esa = 7 ave =  0.0
+o_background_rates_stat_uncert esa = 7 ave =  0.0
+o_background_rates_sys_err esa = 7 ave =  0.0
+o_counts esa = 7 ave =  0.0001875
+off_angle esa = 7 ave =  9.992007221626409e-17
+pivot_angle esa = 7 ave =  90.00913718999999
+pointing_end_met esa = 7 ave =  506772011.0
+pointing_start_met esa = 7 ave =  506685785.0
+sc_direction_vector esa = 7 ave =  -0.45741358660092396
+sc_velocity esa = 7 ave =  -13.663396937699575
+spin_angle esa = 7 ave =  180.0
+start_spin_number esa = 7 ave =  679724.0
+triples_counts esa = 7 ave =  0.0006736111111111112
+ 
+ 
+doubles_counts ALL esa, Ave =  [0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.28845238 0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.        ]
+exposure_time ALL esa, Ave =  [0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        3.0076044
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.       ]
+h_background_rates ALL esa, Ave =  [0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547 0.00688547
+ 0.00688547 0.00688547 0.00688547 0.00688547]
+h_background_rates_stat_uncert ALL esa, Ave =  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+h_background_rates_sys_err ALL esa, Ave =  [0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286
+ 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286
+ 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286
+ 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286
+ 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286
+ 0.0013286 0.0013286 0.0013286 0.0013286 0.0013286]
+h_counts ALL esa, Ave =  [0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        0.1109127
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.        0.        0.
+ 0.        0.        0.        0.        0.       ]
+o_background_rates ALL esa, Ave =  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+o_background_rates_stat_uncert ALL esa, Ave =  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+o_background_rates_sys_err ALL esa, Ave =  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+o_counts ALL esa, Ave =  [0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.12484127 0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.        ]
+triples_counts ALL esa, Ave =  [0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.25694444 0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.        ]
