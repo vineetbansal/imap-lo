@@ -1,0 +1,8 @@
+input/
+output/
+outdir/
+
+software_loads/
+
+*.cdf
+*.csv
