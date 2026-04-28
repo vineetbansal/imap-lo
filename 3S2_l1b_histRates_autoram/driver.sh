@@ -1,9 +1,21 @@
-_v2_ [ -z "$1" ] || delaytime=$1
+#!/bin/bash
+set -euo pipefail
 
-input=../input_l1b_histrates
-input_de=../input_de
-input_hk=../input_hk
-output=./output
+_v3_ [ -z "$1" ] || delaytime="${1:-1}"
+
+input="../input_l1b_histrates"
+input_de="../input_de"
+input_hk="../input_hk"
+output="./output"
+
+mkdir -p "$output"
+
+lockfile="./3S2_l1b_histRates_autoram.lock"
+exec 9>"$lockfile"
+if ! flock -n 9; then
+  echo "3S2_l1b_histRates_autoram already running. Exiting."
+  exit 1
+fi
 
 # Check if the target is a directory
 if [ ! -d "$input" ]; then
@@ -11,16 +23,29 @@ if [ ! -d "$input" ]; then
   exit 1
 fi
 
+mapfile -d '' files < <(
+  find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0
+)
+
 # for file in "$input"/*; do
 # find "$input" -maxdepth 1 -type f -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
-find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
+#find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
+for file in "${files[@]}"; do
 
+  base=$(basename "$file")
+  key=$(echo "$base" | grep -oE '_[0-9]{8}-repoint[0-9]+' || true)
+#  key=$(basename "$file" | grep -oE '_[0-9]{8}-repoint')
 
-  key=$(basename "$file" | grep -oE '_[0-9]{8}-repoint')
+  if [[ -z "$key" ]]; then
+    echo "3S2_l1b_histRates_autoram SKIP: could not extract date/repoint key from $file"
+    continue
+  fi
 
-  match=$(ls "$input_de"/*"$key"* 2>/dev/null | head -n 1)
-
-  mathk=$(ls "$input_hk"/*"$key"* 2>/dev/null | head -n 1)  
+# we comment out old versions
+  match=$(find "$input_de" -maxdepth 1 -type f -name "*${key}*.cdf" | head -n 1 || true)
+  mathk=$(find "$input_hk" -maxdepth 1 -type f -name "*${key}*.cdf" | head -n 1 || true)
+#  match=$(ls "$input_de"/*"$key"* 2>/dev/null | head -n 1)
+#  mathk=$(ls "$input_hk"/*"$key"* 2>/dev/null | head -n 1)  
 
   if [[ -n "$match" ]]; then
     echo "3S2_l1b_histRates_autoram MATCH (DE):"
@@ -61,9 +86,12 @@ if [[ -n "$mathk" ]]; then
   fi
 
 
-  ofile="${file/#..\/input_l1b_histrates/./output}"
-  ofile="${ofile/.cdf/}"
-  echo "3S2_l1b_histRates_autoram Output GT file: $ofile"
+  #ofile="${file/#..\/input_l1b_histrates/./output}"
+  #ofile="${ofile/.cdf/}"
+
+
+  ofile="$output/${base%.cdf}"
+  echo "3S2_l1b_histRates_autoram Output base: $ofile"
 
   ./runIMAP-fmv1-auto_ram.sh "$file" "$match" "$mathk" "$ofile" 
   
