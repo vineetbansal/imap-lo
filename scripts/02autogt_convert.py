@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -120,6 +121,8 @@ def met_from_epoch(t):
 
 def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path):
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     cdf = pycdf.CDF(str(input_hist_cdf))
     cdf_de = pycdf.CDF(str(input_de_cdf))
     cdf_hk = pycdf.CDF(str(input_hk_cdf))
@@ -199,9 +202,9 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
 
     date_str = f"{epoch_start.year}{epoch_start.timetuple().tm_yday:03d}"
 
-    with open(f'output/imap_lo_goodtimes_{date_str}.csv', 'w') as fgt, \
-            open(f'output/imap_lo_HO_cnts_expo_{date_str}.csv', 'w') as fcn, \
-            open(f'output/imap_lo_goodtimes_ideas_{date_str}.csv', 'w') as fideas:
+    with open(f'{output_dir}/imap_lo_goodtimes_{date_str}.csv', 'w') as fgt, \
+            open(f'{output_dir}/imap_lo_HO_cnts_expo_{date_str}.csv', 'w') as fcn, \
+            open(f'{output_dir}/imap_lo_goodtimes_ideas_{date_str}.csv', 'w') as fideas:
 
         print_lines_tof_ideas(fideas, date_str, 0, 0, header=True)
 
@@ -292,12 +295,12 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
                             sum_bg1_expo, bg_rate_nom, pivot, pivotp)
                 print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
 
-    with open(f'output/imap_lo_H_background_{date_str}.csv', 'w') as f:
+    with open(f'{output_dir}/imap_lo_H_background_{date_str}.csv', 'w') as f:
         if last_end > first_begin:
             print_lines_background("H", f, date_str, first_begin, last_end, sum_bg_cnts,
                                    sum_bg_expo, bg_rate_nom)
 
-    with open(f'output/imap_lo_O_background_{date_str}.csv', 'w') as f:
+    with open(f'{output_dir}/imap_lo_O_background_{date_str}.csv', 'w') as f:
         if last_end > first_begin:
             print_lines_background("O", f, date_str, first_begin, last_end,
                                    sum_og_cnts, sum_bg_expo, bg_rate_nom)
@@ -305,8 +308,8 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
 
 if __name__ == "__main__":
     process(
-        Path("/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_histrates_20260413-repoint00217_v002.cdf"),
-        Path("/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_de_20260413-repoint00217_v002.cdf"),
-        Path("/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_nhk_20260413-repoint00217_v001.cdf"),
-        Path("output"),
+        Path(sys.argv[1]),
+        Path(sys.argv[2]),
+        Path(sys.argv[3]),
+        Path(sys.argv[4]),
     )
