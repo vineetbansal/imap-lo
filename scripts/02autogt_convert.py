@@ -6,17 +6,7 @@ from spacepy import pycdf
 from spacepy.time import Ticktock
 
 
-H_PEAK_L = [20.0, 10.0, 10.0]
-H_PEAK_H = [70.0, 50.0, 40.0]
-CO_PEAK_L = [100.0, 60.0, 60.0]
-CO_PEAK_H = [270.0, 150.0, 150.0]
-
-
-epoch0 = datetime(2010, 1, 1, 0, 0, 0)
-epoch = datetime(2010, 1, 1, 0, 0, 0)
-
-
-CUT_MAP = {
+BG_RATE_ANTI_RAM_OVERRIDE = {
     (2026, 62): 0.0014,
     (2026, 64): 0.0,
     (2026, 65): 0.0,
@@ -76,7 +66,7 @@ def print_lines_tof_ideas(fideas, date, begin1, end1, header: bool = False):
         )
     else:
         print(
-            f"{date},{int(begin2)},{int(end2)},0,59,60,Lo,1,1,1,1,1,1,1,0,1, {H_PEAK_L[0]},{CO_PEAK_H[0]},100,{H_PEAK_L[1]},{CO_PEAK_H[1]},100,{H_PEAK_L[2]},{CO_PEAK_H[2]},100,0.0,15.0,20",
+            f"{date},{int(begin2)},{int(end2)},0,59,60,Lo,1,1,1,1,1,1,1,0,1, 20.0,270.0,100,10.0,150.0,100,10.0,150.0,100,0.0,15.0,20",
             file=fideas
         )
 
@@ -111,12 +101,8 @@ def print_lines_background(element, file_handle, date, begin1, end1, sum_bg_cnts
 
 
 def met_from_epoch(t):
-    e0 = epoch0
-    e1 = t
-    dt = e1 - e0
-    met = dt.total_seconds() + 9
-
-    return met
+    dt = t - datetime(2010, 1, 1, 0, 0, 0) 
+    return dt.total_seconds() + 9 
 
 
 def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path):
@@ -124,11 +110,10 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
     output_dir.mkdir(parents=True, exist_ok=True)
 
     cdf = pycdf.CDF(str(input_hist_cdf))
-    cdf_de = pycdf.CDF(str(input_de_cdf))
     cdf_hk = pycdf.CDF(str(input_hk_cdf))
 
     try:
-        pivotp = cdf_de['pivot_angle'][0]
+        pivotp = pycdf.CDF(str(input_de_cdf))['pivot_angle'][0]
     except:
         pivotp = 0.0
 
@@ -160,23 +145,20 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
     epoch = cdf['epoch'][:]
     epoch_start = epoch[0]
 
-    if len(epoch) == 0:
-        raise ValueError("No epoch data in CDF")
-
     if PIVOT_90_RANGE[0] < pivot < PIVOT_90_RANGE[1]:
-        bg_rate_ram_nom = THRESHOLD_BG_RATE_RAM_90
-        bg_rate_nom = THRESHOLD_BG_RATE_ANTI_RAM_90
+        bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_90
+        bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_90
     else:
-        bg_rate_ram_nom = THRESHOLD_BG_RATE_RAM_NON_90
-        bg_rate_nom = THRESHOLD_BG_RATE_ANTI_RAM_NON_90
+        bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_NON_90
+        bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_NON_90
 
-    bg_rate_nom = CUT_MAP.get((epoch_start.year, epoch_start.timetuple().tm_yday), bg_rate_nom)
+    bg_rate_anti_ram_nominal = BG_RATE_ANTI_RAM_OVERRIDE.get((epoch_start.year, epoch_start.timetuple().tm_yday), bg_rate_anti_ram_nominal)
 
     interval_nom = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM
 
     exposure = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_AVE * EXPOSURE_FACTOR
+    exposure_ram = exposure * len(RAM_ESA_LEVELS) / N_ESA_LEVELS
     exposure_sum = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM * EXPOSURE_FACTOR
-    exposure_ram = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_AVE * EXPOSURE_FACTOR * len(RAM_ESA_LEVELS) / N_ESA_LEVELS
 
     hydrogen_anti_ram_counts = np.sum(cdf['h_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
     oxygen_anti_ram_counts = np.sum(cdf['o_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
@@ -189,16 +171,11 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
 
     ncycle = np.shape(hydrogen_anti_ram_counts)[0]
 
-    begin = 0.0
-    end = 0.0
+    begin = end = 0.0
 
-    sum_bg_cnts = 0.0
-    sum_og_cnts = 0.0
-    sum_bg_expo = 0.0
-
-    sum_bg1_cnts = 0.0
-    sum_og1_cnts = 0.0
-    sum_bg1_expo = 0.0
+    sum_bg_cnts = sum_og_cnts = 0.0
+    sum_bg_expo = sum_bg1_expo = 0.0
+    sum_bg_cnts_proxy = sum_og_cnts_proxy = 0.0
 
     date_str = f"{epoch_start.year}{epoch_start.timetuple().tm_yday:03d}"
 
@@ -220,8 +197,8 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
                 if begin > 0.0:
                     end = met_from_epoch(epoch[i - 1])
 
-                    print_lines(fgt, fcn, date_str, begin, end, sum_bg1_cnts, sum_og1_cnts,
-                                sum_bg1_expo, bg_rate_nom, pivot, pivotp)
+                    print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
+                                sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
                     print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
 
                     begin = 0.0
@@ -231,13 +208,13 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
 
             delta_time = 0.0
             if i > 0:
-                delta_time = met_from_epoch(epoch[i]) - (met_from_epoch(epoch[i - 1]) + 420)
+                delta_time = met_from_epoch(epoch[i]) - (met_from_epoch(epoch[i - 1]) + HISTOGRAM_CYCLE_EPOCHS)
 
             if (delta_time > DELAY_MAX) and (begin > 0.0):
                 end = met_from_epoch(epoch[i - 1])
 
-                print_lines(fgt, fcn, date_str, begin, end, sum_bg1_cnts, sum_og1_cnts,
-                            sum_bg1_expo, bg_rate_nom, pivot, pivotp)
+                print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
+                            sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
                 print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
 
                 begin = 0.0
@@ -253,36 +230,31 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
             if (window_sum_end - window_sum_start) < N_CYCLE_SUM:
                 window_sum_start = max(window_avg_end - N_CYCLE_SUM, 0)
 
-            antiram_cnts = np.sum(hydrogen_anti_ram_counts[window_avg_start:window_avg_end])
-            antiram_rate = antiram_cnts / exposure
+            ram_rate = np.sum(d_ram[window_avg_start:window_avg_end]) / exposure_ram
+            anti_ram_rate = np.sum(hydrogen_anti_ram_counts[window_avg_start:window_avg_end]) / exposure
 
-            antiram_cnts_sum = np.sum(hydrogen_anti_ram_counts[window_sum_start:window_sum_end])
-            antiram_cnts_o_sum = np.sum(oxygen_anti_ram_counts[window_sum_start:window_sum_end])
-
-            ram_cnts = np.sum(d_ram[window_avg_start:window_avg_end])
-            ram_rate = ram_cnts / exposure_ram
-
-            if (antiram_rate < bg_rate_nom) and (ram_rate < bg_rate_ram_nom):
+            if (ram_rate < bg_rate_ram_nominal) and (anti_ram_rate < bg_rate_anti_ram_nominal):
 
                 if begin == 0.0:
                     begin = met_from_epoch(epoch[i])
 
                 # actual background estimate for the bg file
-                sum_bg_cnts = sum_bg_cnts + (BG_RATE_HYDROGEN * exposure)
-                sum_og_cnts = sum_og_cnts + (BG_RATE_OXYGEN * exposure)
-                sum_bg_expo = sum_bg_expo + exposure
+                sum_bg_cnts += BG_RATE_HYDROGEN * exposure
+                sum_og_cnts += BG_RATE_OXYGEN * exposure
+                sum_bg_expo += exposure
 
                 # proxy in the antiram hemisphere
-                sum_bg1_cnts = sum_bg1_cnts + antiram_cnts_sum
-                sum_og1_cnts = sum_og1_cnts + antiram_cnts_o_sum
-                sum_bg1_expo = sum_bg1_expo + exposure_sum
+                sum_bg_cnts_proxy += np.sum(hydrogen_anti_ram_counts[window_sum_start:window_sum_end])
+                sum_og_cnts_proxy += np.sum(oxygen_anti_ram_counts[window_sum_start:window_sum_end])
+                sum_bg1_expo += exposure_sum
 
-            if (antiram_rate >= bg_rate_nom) or (ram_rate >= bg_rate_ram_nom):
+            else:
+
                 if begin > 0.0:
                     end = met_from_epoch(epoch[i - 1])
 
-                    print_lines(fgt, fcn, date_str, begin, end, sum_bg1_cnts, sum_og1_cnts,
-                                sum_bg1_expo, bg_rate_nom, pivot, pivotp)
+                    print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
+                                sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
                     print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
 
                     begin = 0.0
@@ -291,19 +263,19 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
         if (end == 0.) and (begin > 0.0):
             end = met_from_epoch(epoch[ncycle - 1])
             if end > begin:
-                print_lines(fgt, fcn, date_str, begin, end, sum_bg1_cnts, sum_og1_cnts,
-                            sum_bg1_expo, bg_rate_nom, pivot, pivotp)
+                print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
+                            sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
                 print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
 
     with open(f'{output_dir}/imap_lo_H_background_{date_str}.csv', 'w') as f:
         if last_end > first_begin:
             print_lines_background("H", f, date_str, first_begin, last_end, sum_bg_cnts,
-                                   sum_bg_expo, bg_rate_nom)
+                                   sum_bg_expo, bg_rate_anti_ram_nominal)
 
     with open(f'{output_dir}/imap_lo_O_background_{date_str}.csv', 'w') as f:
         if last_end > first_begin:
             print_lines_background("O", f, date_str, first_begin, last_end,
-                                   sum_og_cnts, sum_bg_expo, bg_rate_nom)
+                                   sum_og_cnts, sum_bg_expo, bg_rate_anti_ram_nominal)
 
 
 if __name__ == "__main__":
