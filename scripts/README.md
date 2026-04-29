@@ -43,7 +43,7 @@ The algorithm maintains a `begin`/`end` state:
 
 - **Opens** a good-time interval when **both** `antiram_rate < threshold` AND `ram_rate < ram_threshold`
 - **Closes** it (and emits output) when **either** rate exceeds its threshold
-- Also closes on **time gaps**: if consecutive cycles are more than 100 s apart (`DELAY_MAX`), the open interval is closed and the gap cycle is skipped
+- Also closes on **time gaps**: if consecutive cycles are more than ~100 s apart (`DELAY_MAX`) (this is an input argument to the script and may be changed), the open interval is closed and the gap cycle is skipped
 
 ### 5. Accumulation During Good Times
 
