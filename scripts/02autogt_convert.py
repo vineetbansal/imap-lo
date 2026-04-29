@@ -128,8 +128,7 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
         mask_hk = (times >= start_time_hk) & (times <= end_time_hk)
         pri = cdf_hk['pcc_coarse_pot_pri'][...]
 
-        pivot1 = np.nanmedian(pri[mask_hk])
-        pivot = pivot1
+        pivot = np.nanmedian(pri[mask_hk])
         if np.isnan(pivot):
             pivot = 90.0
     except:
@@ -160,19 +159,17 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
     exposure_ram = exposure * len(RAM_ESA_LEVELS) / N_ESA_LEVELS
     exposure_sum = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM * EXPOSURE_FACTOR
 
-    hydrogen_anti_ram_counts = np.sum(cdf['h_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
-    oxygen_anti_ram_counts = np.sum(cdf['o_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
-
     ram_esa_slice = slice(RAM_ESA_LEVELS[0], RAM_ESA_LEVELS[-1] + 1)
-    d_ram = sum(
+    hydrogen_ram_counts = sum(
         np.sum(cdf['h_counts'][:, ram_esa_slice, b], axis=(1, 2))
         for b in RAM_HISTOGRAM_BINS
     )
+    hydrogen_anti_ram_counts = np.sum(cdf['h_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
+    oxygen_anti_ram_counts = np.sum(cdf['o_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
 
     ncycle = np.shape(hydrogen_anti_ram_counts)[0]
 
     begin = end = 0.0
-
     sum_bg_cnts = sum_og_cnts = 0.0
     sum_bg_expo = sum_bg1_expo = 0.0
     sum_bg_cnts_proxy = sum_og_cnts_proxy = 0.0
@@ -230,7 +227,7 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
             if (window_sum_end - window_sum_start) < N_CYCLE_SUM:
                 window_sum_start = max(window_avg_end - N_CYCLE_SUM, 0)
 
-            ram_rate = np.sum(d_ram[window_avg_start:window_avg_end]) / exposure_ram
+            ram_rate = np.sum(hydrogen_ram_counts[window_avg_start:window_avg_end]) / exposure_ram
             anti_ram_rate = np.sum(hydrogen_anti_ram_counts[window_avg_start:window_avg_end]) / exposure
 
             if (ram_rate < bg_rate_ram_nominal) and (anti_ram_rate < bg_rate_anti_ram_nominal):
