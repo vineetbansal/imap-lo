@@ -1,0 +1,3 @@
+#!/bin/bash
+
+find "$IMAP_DATA_DIR/imap/lo/l1b" -name "*histrates*.cdf" -exec cp {} . \;
