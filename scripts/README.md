@@ -22,7 +22,9 @@ A hardcoded `CUT_MAP` can override the threshold for specific (year, day-of-year
 The algorithm partitions the 60-bin spatial histogram into two directional regions:
 
 - **Anti-RAM bins**: bins 20–50 — used for the primary good-time signal
-- **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 5 & 6 — used as a secondary guard
+- **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 6 & 7 — used as a secondary guard
+
+(bins follow python convention and range from 0-20 actually include bins 0-19).
 
 ### 3. Sliding Window Rate Calculation
 
