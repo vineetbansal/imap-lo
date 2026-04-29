@@ -28,12 +28,14 @@ The algorithm partitions the 60-bin spatial histogram into two directional regio
 
 ### 3. Sliding Window Rate Calculation
 
-Each histogram cycle is 420 epochs (~7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
+Each histogram cycle is 420s (=7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
 
 ```
 antiram_rate = sum(H counts in anti-RAM bins, over window) / exposure
 ram_rate     = sum(H counts in RAM bins at high ESA, over window) / exposure_ram
 ```
+
+Exposure time is estimated as half of the viewing time of viewing circle in the anti-ram direction. This corresponds to 420s x 0.5.
 
 ### 4. Good-Time State Machine
 
