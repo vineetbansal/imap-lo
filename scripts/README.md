@@ -10,7 +10,7 @@ The algorithm is a threshold-based state machine that scans histogram cycles in 
 
 ### 1. Pivot Angle Classification
 
-The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which background-rate thresholds to apply:
+The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which cut-rate (ram and anti-ram rate) thresholds to apply:
 
 - **Near 90°** (88–92°): anti-RAM threshold = 0.007, RAM threshold = 0.014
 - **Non-90°**: anti-RAM = 0.00875, RAM = 0.0175
