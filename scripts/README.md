@@ -47,10 +47,10 @@ The algorithm maintains a `begin`/`end` state:
 
 ### 5. Accumulation During Good Times
 
-While inside a good-time window, the algorithm accumulates two parallel sets of counts:
+While inside a good-time window, the algorithm accumulates two parallel sets of rates and/or counts:
 
-- **Synthetic background** (`sum_bg_cnts/og_cnts`): uses known absolute H/O background rates × exposure — used for the background output files
-- **Proxy background** (`sum_bg1_cnts/og1_cnts`): actual anti-RAM H and O counts — written into the counts/exposure CSV
+- **Synthetic floor** (bg (`sum_bg_cnts, og_cnts` for H, O respectively in the anti-ram direction): uses known absolute H, O floor rates × exposure — used for the output files.
+- **Proxy floor** (`sum_bg1_cnts, og1_cnts`): proxy exposure in the anti-RAM direction and H and O counts respectively.
 
 ### 6. Output Files
 
