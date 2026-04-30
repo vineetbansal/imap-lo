@@ -324,6 +324,32 @@ def write_result_line(fout, result):
         file=fout
     )
 
+def replace_matching_line(outfile, new_line, file_date, repoint, esa_name):
+    lines = []
+    last_match = None
+
+    if os.path.exists(outfile):
+        with open(outfile, "r") as fin:
+            lines = fin.readlines()
+
+        for i, line in enumerate(lines):
+            parts = line.rstrip("\n").split(",")
+
+            if len(parts) >= 8:
+                if (
+                    parts[0] == str(file_date) and
+                    parts[2] == str(repoint) and
+                    parts[7] == str(esa_name)
+                ):
+                    last_match = i
+
+    if last_match is None:
+        lines.append(new_line + "\n")
+    else:
+        lines[last_match] = new_line + "\n"
+
+    with open(outfile, "w") as fout:
+        fout.writelines(lines)
 
 #file = "/Users/hafijulislam/Library/CloudStorage/Box-Box/First_light_maps/DN/Instrument_FM1_playback_301_ILO_SCI_DE_dec_20251102T170018_DN.csv"
 
@@ -404,10 +430,10 @@ for key in sorted(hist_latest):
 
     process_id = f"{key}|hist_v{hist_latest[key][0]}|hk_v{hk_latest[key][0]}"
     if process_id in processed:
-        print("Skipping already processed:", process_id)
+        print("3S2 Skipping already processed:", process_id)
         continue
 
-    print("Processing hist file and HK file:", hist_file, hk_file )
+    print("3S2 Processing hist file and HK file:", hist_file, hk_file )
 
     hk_file = hk_entry[1]
     cdf_hk = pycdf.CDF(str(hk_file))
@@ -558,16 +584,25 @@ for key in sorted(hist_latest):
             outfile = esa_dir / f"{element}_{pname}_{esa_name}.csv"
             ensure_header_wunc(outfile)
 
-            with open(outfile, 'a') as fout:
-                print(
-                    f"{file_date},{date1},{repoint},{version},"
-                    f"{pivot:.3f},{pname},{element},{esa_name},"
-                    f"{exposure_s:.3f},{peak_angle:.3f},"
-                    f"{mu_mom:.6f},{dmu_mom:.6f},{sigma_mom:.6f},{dsigma_mom:.6f},{peak_mom:.6e},{dpeak_mom:.6e},"
-                    f"{mu_fit:.6f},{mu_unc:.6f},{sigma_fit:.6f},{sigma_unc:.6f},{A:.6e},{A_unc:.6e},{bg_fit:.6e},{C_unc:.6e}",
-                    file=fout
-                )
-                print(
+            new_line = (
+                f"{file_date},{date1},{repoint},{version},"
+                f"{pivot:.3f},{pname},{element},{esa_name},"
+                f"{exposure_s:.3f},{peak_angle:.3f},"
+                f"{mu_mom:.6f},{dmu_mom:.6f},{sigma_mom:.6f},{dsigma_mom:.6f},{peak_mom:.6e},{dpeak_mom:.6e},"
+                f"{mu_fit:.6f},{mu_unc:.6f},{sigma_fit:.6f},{sigma_unc:.6f},"
+                f"{A:.6e},{A_unc:.6e},{bg_fit:.6e},{C_unc:.6e}"
+            )
+
+            replace_matching_line(
+                outfile,
+                new_line,
+                file_date,
+                repoint,
+                esa_name 
+            )
+
+            print(
+                    f"3S2: ",
                     f"{file_date},{date1},{repoint},{version},"
                     f"{pivot:.3f},{pname},{element},{esa_name},"
                     f"{exposure_s:.3f},{peak_angle:.3f},"
@@ -575,5 +610,8 @@ for key in sorted(hist_latest):
                     f"{mu_fit:.6f},{sigma_fit:.6f},{peak_fit:.6e},{bg_fit:.6e}"
                 )
 
-with open(manifest_file, 'a') as f:
-    print(process_id, file=f)
+
+    if process_id not in processed:
+        processed.add(process_id)
+        with open(manifest_file, 'a') as f:
+            f.write(process_id + "\n")

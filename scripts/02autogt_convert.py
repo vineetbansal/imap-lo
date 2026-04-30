@@ -2,283 +2,264 @@ import sys
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
+import pandas as pd
 from spacepy import pycdf
 from spacepy.time import Ticktock
 
 
-BG_RATE_ANTI_RAM_OVERRIDE = {
+ELEMS = ("H", "O")  # Ion species tracked
+
+# Hours into the day (UTC) for HK data to calculate median for pivot angle estimation.
+PIVOT_HK_HOUR_RANGE: tuple[int, int] = (3, 15)
+
+# Per-day overrides for the anti-RAM background rate. Keyed by (year, day-of-year)
+BG_RATE_ANTI_RAM_OVERRIDES: dict[tuple[int, int], float] = {
     (2026, 62): 0.0014,
     (2026, 64): 0.0,
     (2026, 65): 0.0,
     (2026, 91): 0.03
 }
 
-HISTOGRAM_CYCLE_EPOCHS = 420
+HISTOGRAM_CYCLE_EPOCHS: int = 420  # One histogram accumulation cycle duration [s]
 
-N_CYCLE_SUM = 1
-N_CYCLE_AVE = 7
-N_ESA_LEVELS = 7
-RAM_ESA_LEVELS = (5, 6)
-RAM_HISTOGRAM_BINS = (slice(0, 20), slice(50, 60))
-ANTI_RAM_HISTOGRAM_BINS = slice(20, 50)
+N_CYCLE_SUM: int = 1   # Granularity of goodtime boundaries
+N_CYCLE_AVE: int = 7   # Cycles to average over when estimating background rates
+N_ESA_LEVELS: int = 7  # Total number of ESA levels
+RAM_ESA_LEVELS: tuple[int, ...] = (6, 7)  # ESA levels for RAM estimation (1-indexed)
 
-BG_RATE_HYDROGEN = 0.0014925
-BG_RATE_OXYGEN = 0.000136635
+# Histogram angular bins (0-indexed) corresponding to the RAM and anti-RAM look directions
+RAM_HISTOGRAM_BINS: tuple[slice, ...] = (slice(0, 20), slice(50, 60))
+ANTI_RAM_HISTOGRAM_BINS: tuple[slice, ...] = (slice(20, 50),)
 
-BG_RATE_MULTIPLIER = {"H": 1.0, "O": 0.3}
-BG_RATE_DIVIDER = {"H": 50.0, "O": 150.0}
+# Nominal background rates [counts/s] for each species
+BG_RATES = {"H": 0.0014925, "O": 0.000136635}
+# When no exposure is available, scale the nominal rate down as a conservative estimate
+BG_RATE_FALLBACK_SCALE: dict[str, float] = {"H": 1.0, "O": 0.3}
+# Minimum non-zero background rate floor = nominal / divisor
+BG_RATE_FLOOR_DIVISOR: dict[str, float] = {"H": 50.0, "O": 150.0}
 
-THRESHOLD_BG_RATE_RAM_90 = 0.014
-THRESHOLD_BG_RATE_ANTI_RAM_90 = 0.007
-THRESHOLD_BG_RATE_RAM_NON_90 = 0.0175
-THRESHOLD_BG_RATE_ANTI_RAM_NON_90 = 0.00875
+# Maximum acceptable background count rates [counts/s] for classifying a cycle as a "good time".
+# Separate thresholds for RAM vs. anti-RAM, and for pivot near 90 deg vs. others
+THRESHOLD_BG_RATE_RAM_90: float = 0.014
+THRESHOLD_BG_RATE_ANTI_RAM_90: float = 0.007
+THRESHOLD_BG_RATE_RAM_NON_90: float = 0.0175
+THRESHOLD_BG_RATE_ANTI_RAM_NON_90: float = 0.00875
 
-DELAY_MAX = 100
-PIVOT_90_RANGE = 88, 92
-EXPOSURE_FACTOR = 0.5
-
-# ---------------------------------------
-
-
-def print_lines(fgt, fcn, date, begin1, end1, sum_bg_cnts, sum_og_cnts, sum_bg_expo,
-                bg_rate_nom, pivot, pivotp):
-    begin2 = begin1 - 2
-    end2 = end1 + 2
-
-    print(
-        f"{date},{int(begin2)},{int(end2)},0,59,Lo,1,1,1,1,1,1,1,# auto goodtimes bg_rate_nom = {bg_rate_nom:.6f}",
-        file=fgt
-    )
-    print(
-        f"{date},{int(begin2)},{int(end2)},30,59,Lo,{sum_bg_cnts},{sum_og_cnts},{sum_bg_expo},{pivot},{pivotp}",
-        file=fcn
-    )
+# Maximum time gap [s] between consecutive histogram epochs before treating them as
+# separate intervals.
+DELAY_MAX: int = 100
+# Pivot angles within this range [degrees] are treated as "near 90".
+PIVOT_90_RANGE: tuple[float, float] = 88., 92.
+# Fraction of each cycle duration that contributes actual exposure.
+EXPOSURE_FACTOR: float = 0.5
 
 
-def print_lines_tof_ideas(fideas, date, begin1, end1, header: bool = False):
-    begin2 = begin1 - 2
-    end2 = end1 + 2
+def save_bg_file(element, file_name, date, begin, end, synthetic_floor, goodtime_exposure_avg, bg_rate_anti_ram_nominal):
+    """Write a per-element background-rate CSV for one day.
 
-    if header:
-        print(
-            f"date,begin,end,bin0,bin1,nbins,Lo,ESA1,ESA2,ESA3,ESA4,ESA5,ESA6,ESA7,Absent, Mode,TOF0lo,TOF0hi,nbins,TOF1lo,TOF1hi,nbins,TOF2lo,TOF2hi,nbins,TOF3lo,TOF3hi,nbins",
-            file=fideas
-        )
-    else:
-        print(
-            f"{date},{int(begin2)},{int(end2)},0,59,60,Lo,1,1,1,1,1,1,1,0,1, 20.0,270.0,100,10.0,150.0,100,10.0,150.0,100,0.0,15.0,20",
-            file=fideas
-        )
-
-
-def print_lines_background(element, file_handle, date, begin1, end1, sum_bg_cnts,
-                           sum_bg_expo, bg_rate_nom):
-
-    if sum_bg_expo == 0:
-        bg_rate = bg_rate_nom * BG_RATE_MULTIPLIER[element]
+    Args:
+        element: Ion species label (e.g. "H" or "O").
+        file_name: Output CSV path.
+        date: Day label string (YYYYDDD) written into the CSV.
+        begin: MET of the first HK epoch for the day [s].
+        end: MET of the last HK epoch for the day [s].
+        synthetic_floor: Total model-predicted background counts accumulated over good times.
+        goodtime_exposure_avg: Total exposure [s] accumulated over good-time intervals.
+        bg_rate_anti_ram_nominal: Nominal anti-RAM threshold rate used as fallback.
+    """
+    if goodtime_exposure_avg == 0:
+        # No good-time exposure accumulated; fall back to a scaled nominal rate.
+        bg_rate = bg_rate_anti_ram_nominal * BG_RATE_FALLBACK_SCALE[element]
         sigma_bg_rate = bg_rate
     else:
-        bg_rate = sum_bg_cnts / sum_bg_expo
-        sigma_bg_rate = np.sqrt(sum_bg_cnts) / sum_bg_expo
+        bg_rate = synthetic_floor / goodtime_exposure_avg
+        sigma_bg_rate = np.sqrt(synthetic_floor) / goodtime_exposure_avg
 
     if bg_rate == 0.0:
-        bg_rate = bg_rate_nom / BG_RATE_DIVIDER[element]
+        bg_rate = bg_rate_anti_ram_nominal / BG_RATE_FLOOR_DIVISOR[element]
         sigma_bg_rate = bg_rate
     if sigma_bg_rate == 0.0:
         sigma_bg_rate = bg_rate
 
-    begin2 = begin1 - 60 * 2
-    end2 = end1 - 60 * 4.5
-
-    print(
-        f"{date},{int(begin2)},{int(end2)},0,59,Lo,{bg_rate:.7f},{bg_rate:.7f},{bg_rate:.7f},{bg_rate:.7f},{bg_rate:.7f},{bg_rate:.7f},{bg_rate:.7f},rate",
-        file=file_handle
-    )
-    print(
-        f"{date},{int(begin2)},{int(end2)},0,59,Lo,{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},{sigma_bg_rate:.7f},sigma",
-        file=file_handle
-    )
+    series = pd.Series({'date': date, 'begin': begin, 'end': end, 'bg_rate': bg_rate, 'bg_rate_sigma': sigma_bg_rate})
+    series.to_frame().T.to_csv(file_name, header=True, index=False)
 
 
-def met_from_epoch(t):
-    dt = t - datetime(2010, 1, 1, 0, 0, 0) 
-    return dt.total_seconds() + 9 
+def _goodtime_row(date_str, begin, end, bg_rate_nom, proxy_floors, exposure_sum, pivot, pivot_de):
+    # TODO: We're currently padding begin/end by 2 s to ensure complete cycles are covered at interval edges.
+    return {
+        'date': date_str, 'begin': int(begin - 2), 'end': int(end + 2),
+        'bg_rate_nom': bg_rate_nom, 'sum_bg_cnts': proxy_floors['H'],
+        'sum_og_cnts': proxy_floors['O'], 'sum_bg_expo': exposure_sum,
+        'pivot': pivot, 'pivot_de': pivot_de
+    }
 
 
-def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path):
+def met_from_epoch(t: datetime):
+    dt = t - datetime(2010, 1, 1, 0, 0, 0)
+    return dt.total_seconds() + 9
 
+
+def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path) -> None:
+    """Identify good-time intervals and background rates for one day of Lo data.
+
+    Reads histogram counts from the L1B histogram CDF, pivot angle from the DE CDF,
+    and HK telemetry from the HK CDF.  Walks the histogram epochs in N_CYCLE_SUM
+    blocks, computing sliding-window RAM and anti-RAM count rates for H ions and
+    comparing them against pivot-dependent thresholds to classify each block as a
+    good time or not.  Consecutive good-time blocks are merged into intervals.
+
+    Writes a background-rate CSV file per ion species tracked, and one good-times CSV
+    listing all identified intervals with accumulated exposure and counts
+
+    Args:
+        input_hist_cdf: Path to the L1B histogram CDF file.
+        input_de_cdf: Path to the direct-events CDF file.
+        input_hk_cdf: Path to the housekeeping CDF file.
+        output_dir: Directory where output CSVs are written.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cdf = pycdf.CDF(str(input_hist_cdf))
-    cdf_hk = pycdf.CDF(str(input_hk_cdf))
+    with pycdf.CDF(str(input_de_cdf)) as cdf_de:
+        pivot_de = cdf_de['pivot_angle'][0] if 'pivot_angle' in cdf_de else 0.0
 
-    try:
-        pivotp = pycdf.CDF(str(input_de_cdf))['pivot_angle'][0]
-    except:
-        pivotp = 0.0
+    with pycdf.CDF(str(input_hk_cdf)) as cdf_hk:
+        if "pcc_coarse_pot_pri" in cdf_hk:
+            hk_epoch_utctimes = np.array(Ticktock(cdf_hk['epoch'], 'CDF').UTC)
+            hk_epoch_utctime0 = hk_epoch_utctimes[0]
+            start_time_hk = hk_epoch_utctime0 + timedelta(hours=PIVOT_HK_HOUR_RANGE[0])
+            end_time_hk = hk_epoch_utctime0 + timedelta(hours=PIVOT_HK_HOUR_RANGE[1])
 
-
-    try:
-        epoch_hk = cdf_hk['epoch']
-        tt = Ticktock(epoch_hk, 'CDF')
-        times = np.array(tt.UTC)
-        t0_hk = times[0]
-        start_time_hk = t0_hk + timedelta(hours=3)
-        end_time_hk = t0_hk + timedelta(hours=15)
-        mask_hk = (times >= start_time_hk) & (times <= end_time_hk)
-        pri = cdf_hk['pcc_coarse_pot_pri'][...]
-
-        pivot = np.nanmedian(pri[mask_hk])
-        if np.isnan(pivot):
+            coarse_pot_pri = cdf_hk['pcc_coarse_pot_pri'][...]
+            pivot = np.nanmedian(coarse_pot_pri[(hk_epoch_utctimes >= start_time_hk) & (hk_epoch_utctimes <= end_time_hk)])
+            if np.isnan(pivot):
+                pivot = 90.0
+        else:
             pivot = 90.0
-    except:
-        pivot = 90.0
 
-    try:
         first_begin = met_from_epoch(cdf_hk['epoch'][0])
         last_end = met_from_epoch(cdf_hk['epoch'][-1])
-    except:
-        first_begin = met_from_epoch(cdf['epoch'][0])
-        last_end = met_from_epoch(cdf['epoch'][-1])
 
-    epoch = cdf['epoch'][:]
-    epoch_start = epoch[0]
+    if last_end <= first_begin:
+        return
 
-    if PIVOT_90_RANGE[0] < pivot < PIVOT_90_RANGE[1]:
-        bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_90
-        bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_90
-    else:
-        bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_NON_90
-        bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_NON_90
+    with pycdf.CDF(str(input_hist_cdf)) as cdf_hist:
+        epoch = cdf_hist['epoch'][:]
+        n_epochs = epoch.shape[0]
+        epoch_start = epoch[0]
+        date_str = f"{epoch_start.year}{epoch_start.timetuple().tm_yday:03d}"
 
-    bg_rate_anti_ram_nominal = BG_RATE_ANTI_RAM_OVERRIDE.get((epoch_start.year, epoch_start.timetuple().tm_yday), bg_rate_anti_ram_nominal)
+        # Choose background rate thresholds based on pivot orientation.
+        if PIVOT_90_RANGE[0] < pivot < PIVOT_90_RANGE[1]:
+            bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_90
+            bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_90
+        else:
+            bg_rate_ram_nominal = THRESHOLD_BG_RATE_RAM_NON_90
+            bg_rate_anti_ram_nominal = THRESHOLD_BG_RATE_ANTI_RAM_NON_90
 
-    interval_nom = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM
+        # Manual overrides of the anti-RAM threshold for anomalous days.
+        bg_rate_anti_ram_nominal = BG_RATE_ANTI_RAM_OVERRIDES.get((epoch_start.year, epoch_start.timetuple().tm_yday), bg_rate_anti_ram_nominal)
 
+        ram_esa_indices = [i - 1 for i in RAM_ESA_LEVELS]  # Convert to 0-indexed
+
+        # Sum histogram counts over the relevant angular bins for each species and
+        # direction. RAM counts use only certain ESA steps; anti-RAM counts use all.
+        elem_ram_counts = {}
+        elem_anti_ram_counts = {}
+        for elem in ELEMS:
+            elem_counts = cdf_hist[f'{elem.lower()}_counts'][...]
+            elem_ram_counts[elem] = sum(
+                np.sum(elem_counts[:, ram_esa_indices, b], axis=(1, 2))
+                for b in RAM_HISTOGRAM_BINS
+            )
+            elem_anti_ram_counts[elem] = sum(
+                np.sum(elem_counts[:, :, b], axis=(1, 2))
+                for b in ANTI_RAM_HISTOGRAM_BINS
+            )
+
+    # Pre-compute expected exposure times [s] for the averaging and summing windows.
     exposure = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_AVE * EXPOSURE_FACTOR
     exposure_ram = exposure * len(RAM_ESA_LEVELS) / N_ESA_LEVELS
     exposure_sum = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM * EXPOSURE_FACTOR
 
-    ram_esa_slice = slice(RAM_ESA_LEVELS[0], RAM_ESA_LEVELS[-1] + 1)
-    hydrogen_ram_counts = sum(
-        np.sum(cdf['h_counts'][:, ram_esa_slice, b], axis=(1, 2))
-        for b in RAM_HISTOGRAM_BINS
-    )
-    hydrogen_anti_ram_counts = np.sum(cdf['h_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
-    oxygen_anti_ram_counts = np.sum(cdf['o_counts'][:, :, ANTI_RAM_HISTOGRAM_BINS], axis=(1, 2))
-
-    ncycle = np.shape(hydrogen_anti_ram_counts)[0]
-
+    # Walk through histogram epochs one N_CYCLE_SUM block at a time.
     begin = end = 0.0
-    sum_bg_cnts = sum_og_cnts = 0.0
-    sum_bg_expo = sum_bg1_expo = 0.0
-    sum_bg_cnts_proxy = sum_og_cnts_proxy = 0.0
+    interval = HISTOGRAM_CYCLE_EPOCHS * N_CYCLE_SUM
+    synthetic_floors = {e: 0.0 for e in ELEMS}   # Accumulated model-predicted BG counts
+    proxy_floors = {e: 0.0 for e in ELEMS}       # Accumulated measured anti-RAM counts (BG proxy)
+    goodtime_exposure_avg = goodtime_exposure_sum = 0.0
+    goodtime_rows = []
 
-    date_str = f"{epoch_start.year}{epoch_start.timetuple().tm_yday:03d}"
+    for i in range(0, n_epochs, N_CYCLE_SUM):
 
-    with open(f'{output_dir}/imap_lo_goodtimes_{date_str}.csv', 'w') as fgt, \
-            open(f'{output_dir}/imap_lo_HO_cnts_expo_{date_str}.csv', 'w') as fcn, \
-            open(f'{output_dir}/imap_lo_goodtimes_ideas_{date_str}.csv', 'w') as fideas:
+        measured_interval = interval
+        if i + N_CYCLE_SUM < n_epochs:
+            measured_interval = met_from_epoch(epoch[i + N_CYCLE_SUM]) - met_from_epoch(epoch[i])
 
-        print_lines_tof_ideas(fideas, date_str, 0, 0, header=True)
+        if measured_interval > (interval + DELAY_MAX):
 
-        for i in range(0, ncycle, N_CYCLE_SUM):
-
-            if i + N_CYCLE_SUM < ncycle:
-                interval = met_from_epoch(epoch[i + N_CYCLE_SUM]) - met_from_epoch(epoch[i])
-            else:
-                interval = interval_nom
-
-            if interval > (interval_nom + DELAY_MAX):
-
-                if begin > 0.0:
-                    end = met_from_epoch(epoch[i - 1])
-
-                    print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
-                                sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
-                    print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
-
-                    begin = 0.0
-                    end = 0.0
-
-                continue
-
-            delta_time = 0.0
-            if i > 0:
-                delta_time = met_from_epoch(epoch[i]) - (met_from_epoch(epoch[i - 1]) + HISTOGRAM_CYCLE_EPOCHS)
-
-            if (delta_time > DELAY_MAX) and (begin > 0.0):
+            if begin > 0.0:
                 end = met_from_epoch(epoch[i - 1])
+                goodtime_rows.append(_goodtime_row(date_str, begin, end, bg_rate_anti_ram_nominal, proxy_floors, goodtime_exposure_sum, pivot, pivot_de))
+                begin = end = 0.0
+            continue
 
-                print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
-                            sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
-                print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
+        # A large gap (missing data) forces the current good-time interval to close.
+        delta_time = 0.0
+        if i > 0:
+            delta_time = met_from_epoch(epoch[i]) - (met_from_epoch(epoch[i - 1]) + HISTOGRAM_CYCLE_EPOCHS)
 
-                begin = 0.0
-                end = 0.0
+        if (delta_time > DELAY_MAX) and (begin > 0.0):
+            end = met_from_epoch(epoch[i - 1])
+            goodtime_rows.append(_goodtime_row(date_str, begin, end, bg_rate_anti_ram_nominal, proxy_floors, goodtime_exposure_sum, pivot, pivot_de))
+            begin = end = 0.0
 
-            window_avg_start = max(int(i - N_CYCLE_AVE // 2), 0)
-            window_avg_end = min(ncycle, window_avg_start + N_CYCLE_AVE)
-            if (window_avg_end - window_avg_start) < N_CYCLE_AVE:
-                window_avg_start = max(window_avg_end - N_CYCLE_AVE, 0)
+        # Sliding window centered on epoch i for rate averaging
+        window_avg_start = max(int(i - N_CYCLE_AVE // 2), 0)
+        window_avg_end = min(n_epochs, window_avg_start + N_CYCLE_AVE)
+        if (window_avg_end - window_avg_start) < N_CYCLE_AVE:
+            window_avg_start = max(window_avg_end - N_CYCLE_AVE, 0)
 
-            window_sum_start = max(int(i - N_CYCLE_SUM // 2), 0)
-            window_sum_end = min(ncycle, window_sum_start + N_CYCLE_SUM)
-            if (window_sum_end - window_sum_start) < N_CYCLE_SUM:
-                window_sum_start = max(window_avg_end - N_CYCLE_SUM, 0)
+        # Sliding window centered on epoch i for accumulating counts
+        window_sum_start = max(int(i - N_CYCLE_SUM // 2), 0)
+        window_sum_end = min(n_epochs, window_sum_start + N_CYCLE_SUM)
+        if (window_sum_end - window_sum_start) < N_CYCLE_SUM:
+            window_sum_start = max(window_avg_end - N_CYCLE_SUM, 0)
 
-            ram_rate = np.sum(hydrogen_ram_counts[window_avg_start:window_avg_end]) / exposure_ram
-            anti_ram_rate = np.sum(hydrogen_anti_ram_counts[window_avg_start:window_avg_end]) / exposure
+        # Estimate background rates from the averaged H counts
+        ram_rate = np.sum(elem_ram_counts['H'][window_avg_start:window_avg_end]) / exposure_ram
+        anti_ram_rate = np.sum(elem_anti_ram_counts['H'][window_avg_start:window_avg_end]) / exposure
 
-            if (ram_rate < bg_rate_ram_nominal) and (anti_ram_rate < bg_rate_anti_ram_nominal):
+        # good-time = intervals where background rates are below threshold
+        if (ram_rate < bg_rate_ram_nominal) and (anti_ram_rate < bg_rate_anti_ram_nominal):
+            if begin == 0.0:
+                begin = met_from_epoch(epoch[i])  # Start a new good-time interval
 
-                if begin == 0.0:
-                    begin = met_from_epoch(epoch[i])
+            for elem in ELEMS:
+                synthetic_floors[elem] += BG_RATES[elem] * exposure
+                proxy_floors[elem] += np.sum(
+                    elem_anti_ram_counts['H'][window_sum_start:window_sum_end])
 
-                # actual background estimate for the bg file
-                sum_bg_cnts += BG_RATE_HYDROGEN * exposure
-                sum_og_cnts += BG_RATE_OXYGEN * exposure
-                sum_bg_expo += exposure
+            goodtime_exposure_avg += exposure
+            goodtime_exposure_sum += exposure_sum
 
-                # proxy in the antiram hemisphere
-                sum_bg_cnts_proxy += np.sum(hydrogen_anti_ram_counts[window_sum_start:window_sum_end])
-                sum_og_cnts_proxy += np.sum(oxygen_anti_ram_counts[window_sum_start:window_sum_end])
-                sum_bg1_expo += exposure_sum
+        elif begin > 0.0:
+            # Background exceeded threshold; Close the current good-time interval.
+            end = met_from_epoch(epoch[i - 1])
+            goodtime_rows.append(_goodtime_row(date_str, begin, end, bg_rate_anti_ram_nominal, proxy_floors, goodtime_exposure_sum, pivot, pivot_de))
+            begin = end = 0.0
 
-            else:
+    if (end == 0.) and (begin > 0.0):
+        end = met_from_epoch(epoch[n_epochs - 1])
+        if end > begin:
+            goodtime_rows.append(_goodtime_row(date_str, begin, end, bg_rate_anti_ram_nominal, proxy_floors, goodtime_exposure_sum, pivot, pivot_de))
 
-                if begin > 0.0:
-                    end = met_from_epoch(epoch[i - 1])
+    pd.DataFrame(goodtime_rows).to_csv(f'{output_dir}/imap_lo_goodtimes_{date_str}.csv', header=True, index=False)
 
-                    print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
-                                sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
-                    print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
-
-                    begin = 0.0
-                    end = 0.0
-
-        if (end == 0.) and (begin > 0.0):
-            end = met_from_epoch(epoch[ncycle - 1])
-            if end > begin:
-                print_lines(fgt, fcn, date_str, begin, end, sum_bg_cnts_proxy, sum_og_cnts_proxy,
-                            sum_bg1_expo, bg_rate_anti_ram_nominal, pivot, pivotp)
-                print_lines_tof_ideas(fideas, date_str, begin, end, header=False)
-
-    with open(f'{output_dir}/imap_lo_H_background_{date_str}.csv', 'w') as f:
-        if last_end > first_begin:
-            print_lines_background("H", f, date_str, first_begin, last_end, sum_bg_cnts,
-                                   sum_bg_expo, bg_rate_anti_ram_nominal)
-
-    with open(f'{output_dir}/imap_lo_O_background_{date_str}.csv', 'w') as f:
-        if last_end > first_begin:
-            print_lines_background("O", f, date_str, first_begin, last_end,
-                                   sum_og_cnts, sum_bg_expo, bg_rate_anti_ram_nominal)
+    for elem in ELEMS:
+        save_bg_file(elem, f'{output_dir}/imap_lo_{elem}_background_{date_str}.csv', date_str, first_begin, last_end, synthetic_floors[elem], goodtime_exposure_avg, bg_rate_anti_ram_nominal)
 
 
 if __name__ == "__main__":
-    process(
-        Path(sys.argv[1]),
-        Path(sys.argv[2]),
-        Path(sys.argv[3]),
-        Path(sys.argv[4]),
-    )
+    input_hist_cdf, input_de_cdf, input_hk_cdf, output_dir = sys.argv[1:]
+    process(Path(input_hist_cdf), Path(input_de_cdf), Path(input_hk_cdf), Path(output_dir))
