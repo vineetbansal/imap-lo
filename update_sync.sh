@@ -1,4 +1,4 @@
-rsync -avu ./ /Users/nschwadron/Dropbox/IMAP-Lo/quicklook 
+rsync -avu --progress ./ /Users/nschwadron/Dropbox/IMAP-Lo/quicklook 
 rsync -av --progress ./1S04_l1b_histRates_autogoodtimes/output/ /Users/nschwadron/Dropbox/IMAP-Lo/quicklook/1S04_l1b_histRates_autogoodtimes/output/
 rsync -av --progress ./input_goodtime/ /Users/nschwadron/Dropbox/IMAP-Lo/quicklook/input_goodtime/
 rsync -av --progress ./input_goodtime_context/ /Users/nschwadron/Dropbox/IMAP-Lo/quicklook/input_goodtime_context/

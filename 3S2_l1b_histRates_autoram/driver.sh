@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-_v3_ [ -z "$1" ] || delaytime="${1:-1}"
+[ -z "$1" ] || delaytime="${1:-1}"
 
 input="../input_l1b_histrates"
 input_de="../input_de"
@@ -12,7 +12,7 @@ mkdir -p "$output"
 
 lockfile="./3S2_l1b_histRates_autoram.lock"
 exec 9>"$lockfile"
-if ! flock -n 9; then
+if !flock -n 9; then
   echo "3S2_l1b_histRates_autoram already running. Exiting."
   exit 1
 fi
@@ -23,14 +23,9 @@ if [ ! -d "$input" ]; then
   exit 1
 fi
 
-mapfile -d '' files < <(
-  find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0
-)
-
 # for file in "$input"/*; do
 # find "$input" -maxdepth 1 -type f -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
-#find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
-for file in "${files[@]}"; do
+find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | while IFS= read -r -d '' file; do
 
   base=$(basename "$file")
   key=$(echo "$base" | grep -oE '_[0-9]{8}-repoint[0-9]+' || true)
@@ -98,9 +93,20 @@ if [[ -n "$mathk" ]]; then
 done
 
 cd $output 
-cat imap_lo_goodtimes_*.csv > imap_lo_goodtimes.csv
-cat imap_lo_H_background_*.csv > imap_lo_H_background.csv 
-cat imap_lo_O_background_*.csv > imap_lo_O_background.csv 
+
+shopt -s nullglob
+
+rm -f imap_lo_goodtimes.csv imap_lo_goodtimes.csv.tmp
+cat imap_lo_goodtimes_*.csv > imap_lo_goodtimes.csv.tmp
+mv imap_lo_goodtimes.csv.tmp imap_lo_goodtimes.csv
+
+rm -f imap_lo_H_background.csv imap_lo_H_background.csv.tmp
+cat imap_lo_H_background_*.csv > imap_lo_H_background.csv.tmp
+mv imap_lo_H_background.csv.tmp imap_lo_H_background.csv
+
+rm -f imap_lo_O_background.csv imap_lo_O_background.csv.tmp
+cat imap_lo_O_background_*.csv > imap_lo_O_background.csv.tmp
+mv imap_lo_O_background.csv.tmp imap_lo_O_background.csv
 
 for pattern in \
     "imap_lo_HO_cnts_expo_*.csv" \
@@ -110,12 +116,25 @@ for pattern in \
     "imap_lo_r30_HO_cnts_expo_*.csv" \
     "imap_lo_r30_HO_peak_expo_*.csv"
 do
-    outfile="${pattern//\_\*/}"   # remove the * for output filename
-    
-    file1=$(ls $pattern | head -n 1)
-    head -n 1 "$file1" > "$outfile"
-    awk 'FNR>1' $pattern >> "$outfile"
+    outfile="${pattern/_\*/}"
+    tmpfile="${outfile}.tmp"
+
+    rm -f "$outfile" "$tmpfile"
+
+    files=( $pattern )
+
+    if (( ${#files[@]} == 0 )); then
+        echo "No files for $pattern"
+        continue
+    fi
+
+    echo "Bundling $pattern -> $outfile"
+
+    head -n 1 "${files[0]}" > "$tmpfile"
+    awk 'FNR>1' "${files[@]}" >> "$tmpfile"
+    mv "$tmpfile" "$outfile"
 done
+
 
 cd ..
 
