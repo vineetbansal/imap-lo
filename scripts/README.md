@@ -10,7 +10,7 @@ The algorithm is a threshold-based state machine that scans histogram cycles in 
 
 ### 1. Pivot Angle Classification
 
-The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which background-rate thresholds to apply:
+The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which cut-rate (ram and anti-ram rate) thresholds to apply:
 
 - **Near 90°** (88–92°): anti-RAM threshold = 0.007, RAM threshold = 0.014
 - **Non-90°**: anti-RAM = 0.00875, RAM = 0.0175
@@ -22,16 +22,20 @@ A hardcoded `CUT_MAP` can override the threshold for specific (year, day-of-year
 The algorithm partitions the 60-bin spatial histogram into two directional regions:
 
 - **Anti-RAM bins**: bins 20–50 — used for the primary good-time signal
-- **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 5 & 6 — used as a secondary guard
+- **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 6 & 7 — used as a secondary guard
+
+(bins follow python convention and range from 0-20 actually include bins 0-19).
 
 ### 3. Sliding Window Rate Calculation
 
-Each histogram cycle is 420 epochs (~7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
+Each histogram cycle is ~420s (~7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
 
 ```
 antiram_rate = sum(H counts in anti-RAM bins, over window) / exposure
 ram_rate     = sum(H counts in RAM bins at high ESA, over window) / exposure_ram
 ```
+
+Exposure time is estimated as half of the viewing time of viewing circle in the anti-ram direction. This corresponds to ~420s x 0.5. Ram exposure time is 2/7 of the anti-ram exposure time.
 
 ### 4. Good-Time State Machine
 
@@ -39,14 +43,14 @@ The algorithm maintains a `begin`/`end` state:
 
 - **Opens** a good-time interval when **both** `antiram_rate < threshold` AND `ram_rate < ram_threshold`
 - **Closes** it (and emits output) when **either** rate exceeds its threshold
-- Also closes on **time gaps**: if consecutive cycles are more than 100 s apart (`DELAY_MAX`), the open interval is closed and the gap cycle is skipped
+- Also closes on **time gaps**: if consecutive cycles are more than ~100 s apart (`DELAY_MAX`) (this is an input argument to the script and may be changed), the open interval is closed and the gap cycle is skipped
 
 ### 5. Accumulation During Good Times
 
-While inside a good-time window, the algorithm accumulates two parallel sets of counts:
+While inside a good-time window, the algorithm accumulates two parallel sets of rates and/or counts:
 
-- **Synthetic background** (`sum_bg_cnts/og_cnts`): uses known absolute H/O background rates × exposure — used for the background output files
-- **Proxy background** (`sum_bg1_cnts/og1_cnts`): actual anti-RAM H and O counts — written into the counts/exposure CSV
+- **Synthetic floor** (bg (`sum_bg_cnts, og_cnts` for H, O respectively in the anti-ram direction): uses known absolute H, O floor rates × exposure — used for the output files.
+- **Proxy floor** (`sum_bg1_cnts, og1_cnts`): proxy exposure in the anti-RAM direction and H and O counts respectively.
 
 ### 6. Output Files
 
