@@ -122,6 +122,7 @@ for pp in [75,90,105]:
         h_flux_map = np.zeros((30,60))
         h_fvar_map = np.zeros((30,60))
         h_fser_map = np.zeros((30,60))
+        h_fvto_map = np.zeros((30,60))
 
         back_rate_map = np.zeros((30,60))
         back_rate_var = np.zeros((30,60))
@@ -195,8 +196,10 @@ for pp in [75,90,105]:
                     # represent uncertainty in terms of variance (Poisson counts)
                     if (h_cnts_map[jmap,imap] > 0.0):
                         h_fvar_map[jmap,imap] = h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap]
+                        h_fvto_map[jmap,imap] = h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap] + h_fser_map[jmap,imap]**2
                     else:
                         h_fvar_map[jmap,imap] = 0.0
+                        h_fvto_map[jmap,imap] = h_fser_map[jmap,imap]**2
                         
         
         sbg_file = pd.DataFrame(stonoise_map)
@@ -226,6 +229,9 @@ for pp in [75,90,105]:
         h_fvar_map_file = pd.DataFrame(h_fvar_map)
         h_fvar_map_file.to_csv(map_dir+f"/map_fvar_esa{esa}.csv", index=False)
     
+        h_fvto_map_file = pd.DataFrame(h_fvto_map)
+        h_fvto_map_file.to_csv(map_dir+f"/map_fvto_esa{esa}.csv", index=False)
+
         # Background rate and flux products from the same brate
         backrate_file = pd.DataFrame(back_rate_map)
         backrate_file.to_csv(map_dir+f"/map_brate_esa{esa}.csv", index=False)

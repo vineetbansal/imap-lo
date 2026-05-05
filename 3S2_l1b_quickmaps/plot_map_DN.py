@@ -62,6 +62,7 @@ label_map = {
         "func": "Unc Intensity",
         "fser": "Flux Sys Uncertainty",
         "fvar": "Variance Intensity",
+        "fvto": "Variance Total",
         "runc": "Unc Rate",
         "rvar": "Variance Rate",
         "flux": "Intensity (counts cm$^{-2}$ s$^{-1}$ sr$^{-1}$ keV$^{-1}$)"
@@ -76,7 +77,7 @@ for pp in [75,90,105]:
     
     for esa in range(1,8):
         print(esa)
-        for tt in ["expo","rate","flux","cnts","fser","func","runc","fvar","rvar","stbg"]:
+        for tt in ["expo","rate","flux","cnts","fser","func","runc","fvar","fvto","rvar","stbg"]:
                 filename = os.path.join(work_dir1, f"map_{tt}_esa{esa}.csv")
                 data = np.loadtxt(filename, delimiter=',', skiprows=1)
 
@@ -88,7 +89,7 @@ for pp in [75,90,105]:
                     vmax = np.max(data)
                     vmin = 1e-1
 
-                if tt in ["cnts", "rate", "flux", "fvar", "fser", "stbg", "func", "runc", "rvar"]:
+                if tt in ["cnts", "rate", "flux", "fvar", "fvto", "fser", "stbg", "func", "runc", "rvar"]:
                     if esa==5:
                         vmax = np.max(data)
                         vmin = vmax * 1e-2
