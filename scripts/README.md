@@ -74,3 +74,123 @@ Where:
 - `de_cdf` — L1B direct-events CDF file
 - `hk_cdf` — housekeeping CDF file
 - `output_dir` — directory where output CSV files are written
+
+---
+
+# IMAP Lo Sky Map Generation Algorithm
+
+Documentation for `07maps_from_goodtimes.py`, which converts good-time-filtered histogram data into calibrated sky maps in ecliptic coordinates.
+
+## Overview
+
+The script runs in three sequential stages:
+
+1. **`process1`** — masks histogram records to good-time intervals, computes the ecliptic sky pointing of each spin-angle bin from quaternion attitude data, and accumulates counts and exposure per bin into a flat CSV.
+2. **`process2`** — bins the accumulated data onto a (30 colatitude × 60 longitude) ecliptic sky grid, applies the geometric factor and energy calibration, and writes one CSV per quantity per (pivot angle, ESA level) combination.
+3. **`process3`** — reformats the per-quantity CSVs into SOC-compatible `.txt` files with a structured header.
+
+## Core Components
+
+### 1. Spin Axis Determination (`calculate_spin_angles`)
+
+Quaternion CDF files (one or more, covering the observation window) are loaded and merged. Each quaternion rotates the spacecraft body frame into ECLIPJ2000. Applying every quaternion to the body-frame spin-axis vector `[0, 0, 1]` yields a set of spin-axis directions in ECLIPJ2000; these are averaged and normalised to obtain the mean spin axis. A fixed frame rotation (no SPICE kernels required) then converts the result from ECLIPJ2000 to J2000, giving the spin axis as an equatorial (RA, Dec) pair used in all subsequent pointing calculations.
+
+### 2. Sky Pointing per Spin-Angle Bin (`create_ra_dec`)
+
+For a given spin-axis direction and pivot angle the instrument sweeps a cone in the sky. The 360° rotation is divided into 60 bins of 6° each (bin centres at 3°, 9°, …, 357°).
+
+A right-handed frame is built in the plane perpendicular to the spin axis:
+- **NEP axis** — the North Ecliptic Pole projected onto the spin-perpendicular plane (spin angle 0° points here).
+- **RAM axis** — the cross product of the spin axis and the NEP axis (completes the right-handed frame).
+
+For each bin centre the 3D pointing direction is:
+
+```
+d = cos(pivot) * spin_axis
+  + sin(pivot) * cos(spin_angle) * nep_axis
+  + sin(pivot) * sin(spin_angle) * ram_axis
+```
+
+The result is converted from equatorial Cartesian to ecliptic longitude/latitude using the J2000 obliquity (23.439°). The function returns one (ecl_lon, ecl_lat) pair per bin.
+
+### 3. Stage 1 — Good-Time Masking and Bin Accumulation (`process1`)
+
+CDF epoch timestamps are converted to Mission Elapsed Time (MET) seconds relative to 2010-01-01. Each record is tested against the begin/end pairs in the good-times CSV; only records that fall inside at least one interval are kept.
+
+Sky pointing is computed once per pivot angle (default: 75°, 90°, 105°) using the mean spin axis from the quaternion files.
+
+For each ESA level (1–7):
+
+- `h_counts` and `exposure_time_6deg` are summed over the good-time-masked records for each of the 60 spin-angle bins.
+- The arrays are **rolled by `NEP_ROLL = 10`** (the width of the trailing RAM chunk, bins 50–59), shifting those bins to the front. After rolling, bins 0–29 cover the RAM hemisphere (0–180° spin angle) and bins 30–59 cover the anti-RAM hemisphere (180–360°), forming a contiguous NEP-frame layout.
+
+All ESA levels and pivot angles are stacked into a single `map.csv` with columns `esa_level`, `pivot_angle`, `bins`, `ecl_lon`, `ecl_lat`, `counts`, `expo`, `spin_ra`, `spin_dec`.
+
+### 4. Stage 2 — Sky Grid Projection and Calibration (`process2`)
+
+`map.csv` is split by (pivot angle, ESA level). For each subset the 60 spin-angle bins are projected onto a **30 × 60 ecliptic grid** (30 colatitude × 60 longitude bins, each 6° × 6°):
+
+```
+imap = int(ecl_lon * 60 / 360)   # longitude bin 0–59
+jmap = int((90 + ecl_lat) * 30 / 180)   # colatitude bin 0–29
+```
+
+Counts and exposure accumulate additively when multiple spin-angle bins map to the same sky pixel.
+
+For each sky pixel with non-zero exposure the following quantities are computed, where `G` = geometric factor, `E` = ESA energy, `dG` = geometric factor uncertainty, and `B` = background rate from the H-background CSV:
+
+| Quantity | Formula |
+|----------|---------|
+| `rate` | counts / expo |
+| `flux` | rate / (G × E) |
+| `rvar` | rate / expo  *(Poisson variance)* |
+| `fvar` | flux² / counts  *(statistical flux variance)* |
+| `fser` | rate × dG / (G² × E)  *(systematic flux error from G uncertainty)* |
+| `fvto` | fvar + fser²  *(total flux variance)* |
+| `brate` | B |
+| `bvar` | B / expo |
+| `bflux` | B / (G × E) |
+| `bfvar` | bvar / (G × E)²  |
+| `stbg` | rate / B  *(signal-to-background ratio)* |
+| `svar` | rvar / B² + bvar / rate²  *(propagated S/B variance)* |
+| `expo` | accumulated exposure (s) |
+| `cnts` | accumulated counts |
+
+One CSV is written per (pivot angle, ESA level, quantity) — 14 quantities × 3 pivot angles × 7 ESA levels = up to 294 files.
+
+### 5. Stage 3 — SOC Text Format Export (`process3`)
+
+Each per-quantity CSV (30 × 60 matrix) is converted to a `.txt` file with a structured comment header followed by tab-separated rows of scientific-notation values. The header encodes axis ranges, title, units, frame metadata (ECLIPJ2000 sky frame, J2000 position frame), and instrument geometry constants used by downstream SOC tools.
+
+## Output Files
+
+### `process1`
+
+| File | Content |
+|------|---------|
+| `map.csv` | Flat table of counts and exposure per (esa_level, pivot_angle, spin-angle bin) with ecliptic pointing coordinates |
+
+### `process2`
+
+Files named `map_pivot-{angle}_esa-{level}_{quantity}.csv`, one per combination. Each is a 30-row × 60-column matrix on the ecliptic colatitude/longitude grid.
+
+### `process3`
+
+Files named `map_pivot-{angle}_esa-{level}_{quantity}.txt` — SOC-format versions of the `process2` CSVs with a structured header block.
+
+## Usage
+
+```bash
+python 07maps_from_goodtimes.py
+```
+
+The script is currently configured via hardcoded paths in the `__main__` block:
+
+```python
+input_hist_cdf   = "<L1B histogram CDF>"
+goodtime_file    = "<imap_lo_goodtimes_*.csv from 02autogt_convert.py>"
+quaternion_files = ["<spacecraft quaternion L1A CDF>", ...]
+output_dir       = "<directory for map.csv>"
+```
+
+`process2` then reads `output_dir/map.csv` and the H-background CSV produced by `02autogt_convert.py`, writing per-quantity CSVs to `output_dir/maps/`. `process3` converts those CSVs to SOC `.txt` format in `output_dir/soc/`.
