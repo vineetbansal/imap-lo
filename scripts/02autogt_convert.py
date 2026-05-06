@@ -261,5 +261,11 @@ def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output
 
 
 if __name__ == "__main__":
-    input_hist_cdf, input_de_cdf, input_hk_cdf, output_dir = sys.argv[1:]
+    # input_hist_cdf, input_de_cdf, input_hk_cdf, output_dir = sys.argv[1:]
+    input_hist_cdf, input_de_cdf, input_hk_cdf, output_dir = (
+        "/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_histrates_20260413-repoint00217_v002.cdf",
+        "/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_de_20260413-repoint00217_v002.cdf",
+        "/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_nhk_20260413-repoint00217_v001.cdf",
+        "output"
+    )
     process(Path(input_hist_cdf), Path(input_de_cdf), Path(input_hk_cdf), Path(output_dir))
