@@ -163,7 +163,7 @@ def calculate_spin_angles(quaternion_files: list[Path]) -> tuple[float, float]:
     return spin_ra, spin_dec
 
 
-def process1(hist_cdf: Path, goodtime_file: Path, quaternion_files: list[Path],
+def filter_and_bin(hist_cdf: Path, goodtime_file: Path, quaternion_files: list[Path],
             output_dir: Path, pivot_angles: list[float] | None = None):
     if pivot_angles is None:
         pivot_angles = PIVOT_ANGLES
@@ -221,7 +221,7 @@ def process1(hist_cdf: Path, goodtime_file: Path, quaternion_files: list[Path],
                                                     index=False)
 
 
-def process2(map_csv: Path, h_background_csv: Path, output_dir: Path, pivot_angles: list[float] | None = None):
+def grid_and_calibrate(map_csv: Path, h_background_csv: Path, output_dir: Path, pivot_angles: list[float] | None = None):
 
     map_df = pd.read_csv(map_csv)
     h_bgrate = pd.read_csv(h_background_csv)['bg_rate'][0]
@@ -375,7 +375,7 @@ def build_header(stem, hmin, hmax):
 # """.splitlines()
 
 
-def process3(map_dir: Path, output_dir: Path, pivot_angles: list[float] | None = None):
+def write_soc(map_dir: Path, output_dir: Path, pivot_angles: list[float] | None = None):
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -408,16 +408,16 @@ if __name__ == "__main__":
         ["/media/vineetb/T7/imap/spacecraft/l1a/2026/04/imap_spacecraft_l1a_quaternions_20260413_v001.cdf"],
         "output"
     )
-    process1(Path(input_hist_cdf), Path(goodtime_file),
+    filter_and_bin(Path(input_hist_cdf), Path(goodtime_file),
             [Path(p) for p in quaternion_files], Path(output_dir))
 
-    process2(
+    grid_and_calibrate(
         Path("output/map.csv"),
         Path("output/imap_lo_H_background_2026103.csv"),
         Path("output/maps")
     )
 
-    process3(
+    write_soc(
         Path("output/maps"),
         Path("output/soc")
     )

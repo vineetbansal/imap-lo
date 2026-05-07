@@ -85,9 +85,9 @@ Documentation for `07maps_from_goodtimes.py`, which converts good-time-filtered 
 
 The script runs in three sequential stages:
 
-1. **`process1`** — masks histogram records to good-time intervals, computes the ecliptic sky pointing of each spin-angle bin from quaternion attitude data, and accumulates counts and exposure per bin into a flat CSV.
-2. **`process2`** — bins the accumulated data onto a (30 colatitude × 60 longitude) ecliptic sky grid, applies the geometric factor and energy calibration, and writes one CSV per quantity per (pivot angle, ESA level) combination.
-3. **`process3`** — reformats the per-quantity CSVs into SOC-compatible `.txt` files with a structured header.
+1. **`filter_and_bin`** — masks histogram records to good-time intervals, computes the ecliptic sky pointing of each spin-angle bin from quaternion attitude data, and accumulates counts and exposure per bin into a flat CSV.
+2. **`grid_and_calibrate`** — bins the accumulated data onto a (30 colatitude × 60 longitude) ecliptic sky grid, applies the geometric factor and energy calibration, and writes one CSV per quantity per (pivot angle, ESA level) combination.
+3. **`write_soc`** — reformats the per-quantity CSVs into SOC-compatible `.txt` files with a structured header.
 
 ## Core Components
 
@@ -113,7 +113,7 @@ d = cos(pivot) * spin_axis
 
 The result is converted from equatorial Cartesian to ecliptic longitude/latitude using the J2000 obliquity (23.439°). The function returns one (ecl_lon, ecl_lat) pair per bin.
 
-### 3. Stage 1 — Good-Time Masking and Bin Accumulation (`process1`)
+### 3. Stage 1 — Good-Time Masking and Bin Accumulation (`filter_and_bin`)
 
 CDF epoch timestamps are converted to Mission Elapsed Time (MET) seconds relative to 2010-01-01. Each record is tested against the begin/end pairs in the good-times CSV; only records that fall inside at least one interval are kept.
 
@@ -126,7 +126,7 @@ For each ESA level (1–7):
 
 All ESA levels and pivot angles are stacked into a single `map.csv` with columns `esa_level`, `pivot_angle`, `bins`, `ecl_lon`, `ecl_lat`, `counts`, `expo`, `spin_ra`, `spin_dec`.
 
-### 4. Stage 2 — Sky Grid Projection and Calibration (`process2`)
+### 4. Stage 2 — Sky Grid Projection and Calibration (`grid_and_calibrate`)
 
 `map.csv` is split by (pivot angle, ESA level). For each subset the 60 spin-angle bins are projected onto a **30 × 60 ecliptic grid** (30 colatitude × 60 longitude bins, each 6° × 6°):
 
@@ -158,25 +158,25 @@ For each sky pixel with non-zero exposure the following quantities are computed,
 
 One CSV is written per (pivot angle, ESA level, quantity) — 14 quantities × 3 pivot angles × 7 ESA levels = up to 294 files.
 
-### 5. Stage 3 — SOC Text Format Export (`process3`)
+### 5. Stage 3 — SOC Text Format Export (`write_soc`)
 
 Each per-quantity CSV (30 × 60 matrix) is converted to a `.txt` file with a structured comment header followed by tab-separated rows of scientific-notation values. The header encodes axis ranges, title, units, frame metadata (ECLIPJ2000 sky frame, J2000 position frame), and instrument geometry constants used by downstream SOC tools.
 
 ## Output Files
 
-### `process1`
+### `filter_and_bin`
 
 | File | Content |
 |------|---------|
 | `map.csv` | Flat table of counts and exposure per (esa_level, pivot_angle, spin-angle bin) with ecliptic pointing coordinates |
 
-### `process2`
+### `grid_and_calibrate`
 
 Files named `map_pivot-{angle}_esa-{level}_{quantity}.csv`, one per combination. Each is a 30-row × 60-column matrix on the ecliptic colatitude/longitude grid.
 
-### `process3`
+### `write_soc`
 
-Files named `map_pivot-{angle}_esa-{level}_{quantity}.txt` — SOC-format versions of the `process2` CSVs with a structured header block.
+Files named `map_pivot-{angle}_esa-{level}_{quantity}.txt` — SOC-format versions of the `grid_and_calibrate` CSVs with a structured header block.
 
 ## Usage
 
@@ -193,4 +193,4 @@ quaternion_files = ["<spacecraft quaternion L1A CDF>", ...]
 output_dir       = "<directory for map.csv>"
 ```
 
-`process2` then reads `output_dir/map.csv` and the H-background CSV produced by `02autogt_convert.py`, writing per-quantity CSVs to `output_dir/maps/`. `process3` converts those CSVs to SOC `.txt` format in `output_dir/soc/`.
+`grid_and_calibrate` then reads `output_dir/map.csv` and the H-background CSV produced by `02autogt_convert.py`, writing per-quantity CSVs to `output_dir/maps/`. `write_soc` converts those CSVs to SOC `.txt` format in `output_dir/soc/`.
