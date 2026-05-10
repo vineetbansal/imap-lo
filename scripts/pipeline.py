@@ -25,12 +25,12 @@ _SPICE_DIR = Path(__file__).parent.parent / "input_SPICE"
 
 # ------------------
 # Constants that should be migrated to imap_processing.lo.constants.LoConstants
-N_HISTOGRAM_BINS: int = 60
+N_SPIN_BINS: int = 60
 N_COLAT_BINS: int = 30
 
 NEP_ROLL: int = round(
     get_spacecraft_to_instrument_spin_phase_offset(
-        SpiceFrame.IMAP_LO) * N_HISTOGRAM_BINS
+        SpiceFrame.IMAP_LO) * N_SPIN_BINS
 )
 
 # The following are indexed by ESA level (0-indexed, ESA level = index + 1)
@@ -394,7 +394,7 @@ def grid_and_calibrate(map_csv: Path, h_bgrate: float, output_dir: Path) -> Path
 
         df = map_df[map_df['esa_level'] == esa + 1]
 
-        shape = (N_COLAT_BINS, N_HISTOGRAM_BINS)
+        shape = (N_COLAT_BINS, N_SPIN_BINS)
         (
             h_cnts_map, exposure, h_rate_map, h_rate_var,
             h_flux_map, h_fvar_map, h_fser_map, h_fvto_map,
@@ -407,13 +407,13 @@ def grid_and_calibrate(map_csv: Path, h_bgrate: float, output_dir: Path) -> Path
         counts = df['counts'].values
         expo = df['expo'].values
 
-        for ia in range(N_HISTOGRAM_BINS):
+        for ia in range(N_SPIN_BINS):
             ra = ps_ra[ia]
             dec = ps_dec[ia]
 
             theta = 90.0 + dec
 
-            imap = int(ra * N_HISTOGRAM_BINS / 360.0)
+            imap = int(ra * N_SPIN_BINS / 360.0)
             if imap == 60:
                 imap = 0
 
@@ -424,7 +424,7 @@ def grid_and_calibrate(map_csv: Path, h_bgrate: float, output_dir: Path) -> Path
             h_cnts_map[jmap, imap] += counts[ia]
             exposure[jmap, imap] += expo[ia]
 
-        for imap in range(0, N_HISTOGRAM_BINS):
+        for imap in range(0, N_SPIN_BINS):
             for jmap in range(0, N_COLAT_BINS):
 
                 expo = exposure[jmap, imap]
@@ -488,7 +488,7 @@ def grid_and_calibrate(map_csv: Path, h_bgrate: float, output_dir: Path) -> Path
             ("bflux", back_flux_map),
             ("bfvar", back_flux_var),
         ]:
-            pd.DataFrame(data).to_csv(output_dir / f"map_esa-{esa+1}_{name}.csv", index=False)
+            pd.DataFrame(data).to_csv(output_dir / f"map_esa-{esa+1}_{name}.csv", header=False, index=False)
 
     return output_dir
 
@@ -562,7 +562,7 @@ def write_soc(map_dir: Path, output_dir: Path):
 
     for csv_file in Path(map_dir).glob(f"map_*.csv"):
 
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file, header=None, index_col=False)
 
         data = df.to_numpy(dtype=float)
         assert data.shape == (30, 60)
