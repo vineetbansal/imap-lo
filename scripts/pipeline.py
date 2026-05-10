@@ -328,8 +328,8 @@ def filter_and_bin(pivot_angle: float, hist_cdf: Path, goodtime_file: Path, quat
     bins, ecl_lons, ecl_lats = create_ra_dec(spin_ecl_lon, spin_ecl_lat, pivot_angle)
     pivot_df = pd.DataFrame({
         'bins': bins,
-        'ecl_lon': ecl_lons,
-        'ecl_lat': ecl_lats,
+        'bin_ecl_lon': ecl_lons,
+        'bin_ecl_lat': ecl_lats,
     })
 
     dataframes = []
@@ -346,8 +346,8 @@ def filter_and_bin(pivot_angle: float, hist_cdf: Path, goodtime_file: Path, quat
         esa_df = pd.DataFrame({'bins': bins, 'counts': nep_counts, 'expo': nep_exposure})
         df = pivot_df.merge(esa_df, on='bins')
         df.insert(0, 'esa_level', esa_level + 1)
-        df['spin_ra'] = spin_ecl_lon
-        df['spin_dec'] = spin_ecl_lat
+        df['spin_ecl_lon'] = spin_ecl_lon
+        df['spin_ecl_lat'] = spin_ecl_lat
         dataframes.append(df)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -402,8 +402,8 @@ def grid_and_calibrate(map_csv: Path, h_bgrate: float, output_dir: Path) -> Path
             stonoise_map, stonoise_var_map
         ) = [np.zeros(shape) for _ in range(14)]
 
-        ps_ra = df['ecl_lon'].values
-        ps_dec = df['ecl_lat'].values
+        ps_ra = df['bin_ecl_lon'].values
+        ps_dec = df['bin_ecl_lat'].values
         counts = df['counts'].values
         expo = df['expo'].values
 
