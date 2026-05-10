@@ -100,7 +100,7 @@ def met_from_epoch(t: datetime):
     return dt.total_seconds() + 9
 
 
-def process(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path) -> None:
+def genererate_goodtimes(input_hist_cdf: Path, input_de_cdf: Path, input_hk_cdf: Path, output_dir: Path) -> None:
     """Identify good-time intervals and background rates for one day of Lo data.
 
     Reads histogram counts from the L1B histogram CDF, pivot angle from the DE CDF,
@@ -268,4 +268,4 @@ if __name__ == "__main__":
         "/media/vineetb/T7/imap/lo/l1b/2026/04/imap_lo_l1b_nhk_20260413-repoint00217_v001.cdf",
         "output"
     )
-    process(Path(input_hist_cdf), Path(input_de_cdf), Path(input_hk_cdf), Path(output_dir))
+    genererate_goodtimes(Path(input_hist_cdf), Path(input_de_cdf), Path(input_hk_cdf), Path(output_dir))

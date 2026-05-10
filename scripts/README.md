@@ -1,196 +1,107 @@
 # IMAP Lo Good-Times Detection Algorithm
 
-Documentation for `02autogt_convert.py`, which identifies "good time" intervals from IMAP Lo histogram data.
+Implemented in `pipeline.genererate_goodtimes`.
 
-## Overview
+1. **Load SPICE kernels** — furnish the leap-second (LSK) and spacecraft clock (SCLK) kernels required for epoch conversions.
+2. **Read input CDFs**
+   - L1B histogram CDF (`histrates`): epoch and per-element counts arrays (`h_counts`, etc.) indexed by `[epoch, esa_step, spin_bin_6]`.
+   - L1B direct-events CDF (`de`): pivot angle (`pivot_de`) - not directly used by the algorithm.
+   - Housekeeping CDF (`nhk`): coarse potential (`pcc_coarse_pot_pri`) used for actual pivot-angle determination.
+3. **Fetch ancillary overrides** — query and download the `bg-rates-anti-ram-overrides` ancillary table from `imap_data_access`; these allow per-day manual corrections to the background-rate estimates.
+4. **Delegate to `l1b_bgrates_and_goodtimes`** — the core algorithm (implemented in `imap_processing`) ingests the three datasets and ancillary files and returns:
+   - `bgrates_ds`: per-element background rates (counts/s) keyed by element name (e.g. `H`, `O`).
+   - `goodtimes_ds`: good-time intervals as MET start/end pairs, pivot angle, and pivot angle derived from direct events.
 
-The algorithm is a threshold-based state machine that scans histogram cycles in time order, uses a 7-cycle rolling window to compute directional particle rates in two sky regions (RAM and anti-RAM), and marks intervals as "good" only when both rates are simultaneously below pivot-angle-dependent thresholds — broken by any gap or rate exceedance.
+   ### Overview
 
-## Core Components
+   The algorithm is a threshold-based state machine that scans histogram cycles in time order, uses a 7-cycle rolling window to compute directional particle rates in two sky regions (RAM and anti-RAM), and marks intervals as "good" only when both rates are simultaneously below pivot-angle-dependent thresholds — broken by any gap or rate exceedance.
 
-### 1. Pivot Angle Classification
+   ### Core Components
 
-The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which cut-rate (ram and anti-ram rate) thresholds to apply:
+   #### 1. Pivot Angle Classification
 
-- **Near 90°** (88–92°): anti-RAM threshold = 0.007, RAM threshold = 0.014
-- **Non-90°**: anti-RAM = 0.00875, RAM = 0.0175
+   The instrument's pivot angle is read from housekeeping data (`pcc_coarse_pot_pri`) as the median over hours 3–15 of the observation day. This determines which cut-rate thresholds to apply:
 
-A hardcoded `CUT_MAP` can override the threshold for specific (year, day-of-year) combinations.
+   - **Near 90°** (88–92°): anti-RAM threshold = 0.007, RAM threshold = 0.014
+   - **Non-90°**: anti-RAM = 0.00875, RAM = 0.0175
 
-### 2. Histogram Region Definitions
+   An ancillary file can override the threshold for specific (year, day-of-year) combinations.
 
-The algorithm partitions the 60-bin spatial histogram into two directional regions:
+   #### 2. Histogram Region Definitions
 
-- **Anti-RAM bins**: bins 20–50 — used for the primary good-time signal
-- **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 6 & 7 — used as a secondary guard
+   The algorithm partitions the 60-bin spatial histogram into two directional regions:
 
-(bins follow python convention and range from 0-20 actually include bins 0-19).
+   - **Anti-RAM bins**: bins 20–50 — used for the primary good-time signal
+   - **RAM bins**: bins 0–20 and 50–60, restricted to high ESA levels 6 & 7 — used as a secondary guard
 
-### 3. Sliding Window Rate Calculation
+   (Bins follow Python convention; range 0–20 includes bins 0–19.)
 
-Each histogram cycle is ~420s (~7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
+   #### 3. Sliding Window Rate Calculation
 
-```
-antiram_rate = sum(H counts in anti-RAM bins, over window) / exposure
-ram_rate     = sum(H counts in RAM bins at high ESA, over window) / exposure_ram
-```
+   Each histogram cycle is ~420 s (~7 min). For every cycle `i`, the algorithm computes rates using a **7-cycle averaging window**:
 
-Exposure time is estimated as half of the viewing time of viewing circle in the anti-ram direction. This corresponds to ~420s x 0.5. Ram exposure time is 2/7 of the anti-ram exposure time.
+   ```
+   antiram_rate = sum(H counts in anti-RAM bins, over window) / exposure
+   ram_rate     = sum(H counts in RAM bins at high ESA, over window) / exposure_ram
+   ```
 
-### 4. Good-Time State Machine
+   Exposure time is estimated as half of the viewing time of the viewing circle in the anti-RAM direction (~420 s × 0.5). RAM exposure time is 2/7 of the anti-RAM exposure time.
 
-The algorithm maintains a `begin`/`end` state:
+   #### 4. Good-Time State Machine
 
-- **Opens** a good-time interval when **both** `antiram_rate < threshold` AND `ram_rate < ram_threshold`
-- **Closes** it (and emits output) when **either** rate exceeds its threshold
-- Also closes on **time gaps**: if consecutive cycles are more than ~100 s apart (`DELAY_MAX`) (this is an input argument to the script and may be changed), the open interval is closed and the gap cycle is skipped
+   The algorithm maintains a `begin`/`end` state:
 
-### 5. Accumulation During Good Times
+   - **Opens** a good-time interval when **both** `antiram_rate < threshold` AND `ram_rate < ram_threshold`
+   - **Closes** it (and emits output) when **either** rate exceeds its threshold
+   - Also closes on **time gaps**: if consecutive cycles are more than ~100 s apart (`DELAY_MAX`, a configurable input argument), the open interval is closed and the gap cycle is skipped
 
-While inside a good-time window, the algorithm accumulates two parallel sets of rates and/or counts:
+   #### 5. Accumulation During Good Times
 
-- **Synthetic floor** (bg (`sum_bg_cnts, og_cnts` for H, O respectively in the anti-ram direction): uses known absolute H, O floor rates × exposure — used for the output files.
-- **Proxy floor** (`sum_bg1_cnts, og1_cnts`): proxy exposure in the anti-RAM direction and H and O counts respectively.
+   While inside a good-time window, the algorithm accumulates two parallel sets of counts:
 
-### 6. Output Files
-
-For each day, four files are written to the output directory:
-
-| File | Content |
-|------|---------|
-| `imap_lo_goodtimes_*.csv` | MET begin/end timestamps of good intervals |
-| `imap_lo_HO_cnts_expo_*.csv` | H/O count and exposure accumulations per interval |
-| `imap_lo_goodtimes_ideas_*.csv` | TOF peak window parameters for downstream analysis |
-| `imap_lo_H/O_background_*.csv` | Background rate and sigma estimates for H and O |
-
-## Usage
-
-```bash
-python 02autogt_convert.py <hist_cdf> <de_cdf> <hk_cdf> <output_dir>
-```
-
-Where:
-- `hist_cdf` — L1B histogram CDF file
-- `de_cdf` — L1B direct-events CDF file
-- `hk_cdf` — housekeeping CDF file
-- `output_dir` — directory where output CSV files are written
+   - **Synthetic floor** for H and O respectively in the anti-RAM direction): uses known absolute H and O floor rates × exposure — used for output files.
+   - **Proxy floor** : proxy exposure in the anti-RAM direction and H and O counts respectively.
+5. **Write good-times CSV** — one row per good-time interval with columns `date`, `begin` (MET), `end` (MET), `pivot`, `pivot_de`.  File name: `imap_lo_goodtimes_<YYYYDDD>.csv`.
+6. **Return** pivot angle, CSV path, and background-rate dict for downstream use.
 
 ---
 
 # IMAP Lo Sky Map Generation Algorithm
 
-Documentation for `07maps_from_goodtimes.py`, which converts good-time-filtered histogram data into calibrated sky maps in ecliptic coordinates.
+Three sequential steps, implemented in `pipeline.filter_and_bin` → `pipeline.grid_and_calibrate` → `pipeline.write_soc`.
 
-## Overview
+## Step 1 — Filter and bin (`filter_and_bin`)
 
-The script runs in three sequential stages:
+1. **Derive spin-axis direction** — load one or more spacecraft quaternion CDFs (filtered to good-time intervals), apply each attitude quaternion to the body-frame z-axis `[0, 0, 1]` to get the spin-axis direction in ECLIPJ2000, average and normalise.  Result: mean spin-axis ecliptic longitude and latitude in degrees (ECLIPJ2000).
+2. **Mask to good-time intervals** — convert CDF epoch (datetime) to MET seconds and keep only histogram records whose MET falls within at least one `[begin, end]` interval from the good-times CSV.
+3. **Compute sky pointing** — all geometry is performed in ECLIPJ2000.  For each of 60 spin-angle bins (bin centres 3°, 9°, …, 357°, 6° wide), trace the boresight cone (half-angle = pivot angle) around the spin axis.  The perpendicular plane is anchored to the North Ecliptic Pole — which is exactly `[0, 0, 1]` in ECLIPJ2000 — so that spin-angle 0° points toward the NEP; the orthogonal axis points toward the ram direction.  Each bin's ECLIPJ2000 Cartesian direction is converted to ecliptic longitude/latitude via `cartesian_to_spherical`.
+4. **Accumulate counts and exposure** — for each ESA level, sum `h_counts` and `exposure_time_6deg` over the good-time-masked records.  Roll the 60-bin array by `NEP_ROLL` (a fixed offset derived from the Lo instrument spin-phase offset) so that RAM bins (0–29, 0–180°) and anti-RAM bins (30–59, 180–360°) are contiguous.
+5. **Write `map.csv`** — one row per (ESA level × spin-angle bin) with columns `esa_level`, `bins`, `ecl_lon`, `ecl_lat`, `counts`, `expo`, `spin_ra`, `spin_dec`.
 
-1. **`filter_and_bin`** — masks histogram records to good-time intervals, computes the ecliptic sky pointing of each spin-angle bin from quaternion attitude data, and accumulates counts and exposure per bin into a flat CSV.
-2. **`grid_and_calibrate`** — bins the accumulated data onto a (30 colatitude × 60 longitude) ecliptic sky grid, applies the geometric factor and energy calibration, and writes one CSV per quantity per (pivot angle, ESA level) combination.
-3. **`write_soc`** — reformats the per-quantity CSVs into SOC-compatible `.txt` files with a structured header.
+## Step 2 — Grid and calibrate (`grid_and_calibrate`)
 
-## Core Components
+1. **Project onto sky grid** — map the 60 spin-angle bins onto a 30 × 60 ecliptic grid (30 colatitude bins × 60 longitude bins, 6° each) by converting ecliptic lon/lat to integer grid indices.  Counts and exposure accumulate additively for bins that share a pixel.
+2. **Compute per-pixel quantities** (only for pixels with non-zero exposure):
 
-### 1. Spin Axis Determination (`calculate_spin_angles`)
+   | Column | Formula |
+   |--------|---------|
+   | `cnts` | raw counts |
+   | `expo` | exposure time (s) |
+   | `rate` | `cnts / expo` |
+   | `rvar` | `rate / expo` (Poisson variance) |
+   | `flux` | `rate / (G × E)` where G = geometric factor, E = ESA energy (keV) |
+   | `fvar` | `flux² / cnts` (Poisson flux variance) |
+   | `fser` | `rate × ΔG / (G² × E)` (systematic from geo-factor uncertainty) |
+   | `fvto` | `fvar + fser²` (total flux variance) |
+   | `brate` | hydrogen background rate (counts/s) |
+   | `bvar` | `brate / expo` |
+   | `bflux` | `brate / (G × E)` |
+   | `bfvar` | `bvar / (G × E)²` |
+   | `stbg` | `rate / brate` (signal-to-noise ratio) |
+   | `svar` | propagated variance of `stbg` |
 
-Quaternion CDF files (one or more, covering the observation window) are loaded and merged. Each quaternion rotates the spacecraft body frame into ECLIPJ2000. Applying every quaternion to the body-frame spin-axis vector `[0, 0, 1]` yields a set of spin-axis directions in ECLIPJ2000; these are averaged and normalised to obtain the mean spin axis. A fixed frame rotation (no SPICE kernels required) then converts the result from ECLIPJ2000 to J2000, giving the spin axis as an equatorial (RA, Dec) pair used in all subsequent pointing calculations.
+3. **Write per-quantity CSVs** — one 30 × 60 CSV per (ESA level × quantity): `map_esa-{level}_{quantity}.csv`.
 
-### 2. Sky Pointing per Spin-Angle Bin (`create_ra_dec`)
+## Step 3 — Write SOC files (`write_soc`)
 
-For a given spin-axis direction and pivot angle the instrument sweeps a cone in the sky. The 360° rotation is divided into 60 bins of 6° each (bin centres at 3°, 9°, …, 357°).
-
-A right-handed frame is built in the plane perpendicular to the spin axis:
-- **NEP axis** — the North Ecliptic Pole projected onto the spin-perpendicular plane (spin angle 0° points here).
-- **RAM axis** — the cross product of the spin axis and the NEP axis (completes the right-handed frame).
-
-For each bin centre the 3D pointing direction is:
-
-```
-d = cos(pivot) * spin_axis
-  + sin(pivot) * cos(spin_angle) * nep_axis
-  + sin(pivot) * sin(spin_angle) * ram_axis
-```
-
-The result is converted from equatorial Cartesian to ecliptic longitude/latitude using the J2000 obliquity (23.439°). The function returns one (ecl_lon, ecl_lat) pair per bin.
-
-### 3. Stage 1 — Good-Time Masking and Bin Accumulation (`filter_and_bin`)
-
-CDF epoch timestamps are converted to Mission Elapsed Time (MET) seconds relative to 2010-01-01. Each record is tested against the begin/end pairs in the good-times CSV; only records that fall inside at least one interval are kept.
-
-Sky pointing is computed once per pivot angle (default: 75°, 90°, 105°) using the mean spin axis from the quaternion files.
-
-For each ESA level (1–7):
-
-- `h_counts` and `exposure_time_6deg` are summed over the good-time-masked records for each of the 60 spin-angle bins.
-- The arrays are **rolled by `NEP_ROLL = 10`** (the width of the trailing RAM chunk, bins 50–59), shifting those bins to the front. After rolling, bins 0–29 cover the RAM hemisphere (0–180° spin angle) and bins 30–59 cover the anti-RAM hemisphere (180–360°), forming a contiguous NEP-frame layout.
-
-All ESA levels and pivot angles are stacked into a single `map.csv` with columns `esa_level`, `pivot_angle`, `bins`, `ecl_lon`, `ecl_lat`, `counts`, `expo`, `spin_ra`, `spin_dec`.
-
-### 4. Stage 2 — Sky Grid Projection and Calibration (`grid_and_calibrate`)
-
-`map.csv` is split by (pivot angle, ESA level). For each subset the 60 spin-angle bins are projected onto a **30 × 60 ecliptic grid** (30 colatitude × 60 longitude bins, each 6° × 6°):
-
-```
-imap = int(ecl_lon * 60 / 360)   # longitude bin 0–59
-jmap = int((90 + ecl_lat) * 30 / 180)   # colatitude bin 0–29
-```
-
-Counts and exposure accumulate additively when multiple spin-angle bins map to the same sky pixel.
-
-For each sky pixel with non-zero exposure the following quantities are computed, where `G` = geometric factor, `E` = ESA energy, `dG` = geometric factor uncertainty, and `B` = background rate from the H-background CSV:
-
-| Quantity | Formula |
-|----------|---------|
-| `rate` | counts / expo |
-| `flux` | rate / (G × E) |
-| `rvar` | rate / expo  *(Poisson variance)* |
-| `fvar` | flux² / counts  *(statistical flux variance)* |
-| `fser` | rate × dG / (G² × E)  *(systematic flux error from G uncertainty)* |
-| `fvto` | fvar + fser²  *(total flux variance)* |
-| `brate` | B |
-| `bvar` | B / expo |
-| `bflux` | B / (G × E) |
-| `bfvar` | bvar / (G × E)²  |
-| `stbg` | rate / B  *(signal-to-background ratio)* |
-| `svar` | rvar / B² + bvar / rate²  *(propagated S/B variance)* |
-| `expo` | accumulated exposure (s) |
-| `cnts` | accumulated counts |
-
-One CSV is written per (pivot angle, ESA level, quantity) — 14 quantities × 3 pivot angles × 7 ESA levels = up to 294 files.
-
-### 5. Stage 3 — SOC Text Format Export (`write_soc`)
-
-Each per-quantity CSV (30 × 60 matrix) is converted to a `.txt` file with a structured comment header followed by tab-separated rows of scientific-notation values. The header encodes axis ranges, title, units, frame metadata (ECLIPJ2000 sky frame, J2000 position frame), and instrument geometry constants used by downstream SOC tools.
-
-## Output Files
-
-### `filter_and_bin`
-
-| File | Content |
-|------|---------|
-| `map.csv` | Flat table of counts and exposure per (esa_level, pivot_angle, spin-angle bin) with ecliptic pointing coordinates |
-
-### `grid_and_calibrate`
-
-Files named `map_pivot-{angle}_esa-{level}_{quantity}.csv`, one per combination. Each is a 30-row × 60-column matrix on the ecliptic colatitude/longitude grid.
-
-### `write_soc`
-
-Files named `map_pivot-{angle}_esa-{level}_{quantity}.txt` — SOC-format versions of the `grid_and_calibrate` CSVs with a structured header block.
-
-## Usage
-
-```bash
-python 07maps_from_goodtimes.py
-```
-
-The script is currently configured via hardcoded paths in the `__main__` block:
-
-```python
-input_hist_cdf   = "<L1B histogram CDF>"
-goodtime_file    = "<imap_lo_goodtimes_*.csv from 02autogt_convert.py>"
-quaternion_files = ["<spacecraft quaternion L1A CDF>", ...]
-output_dir       = "<directory for map.csv>"
-```
-
-`grid_and_calibrate` then reads `output_dir/map.csv` and the H-background CSV produced by `02autogt_convert.py`, writing per-quantity CSVs to `output_dir/maps/`. `write_soc` converts those CSVs to SOC `.txt` format in `output_dir/soc/`.
+Convert each calibration CSV to a SOC-compatible `.txt` file: a structured comment header encodes axis ranges, title, units, frame metadata (ECLIPJ2000 sky frame, J2000 position frame), and instrument geometry constants, followed by tab-separated rows of values in scientific notation.
