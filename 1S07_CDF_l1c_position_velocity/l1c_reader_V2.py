@@ -61,7 +61,7 @@ cols = ['shcoarse', 'absent', 'timestamp', 'egy', 'mode', 'TOF0', 'TOF1', 'TOF2'
 
 def print_coord(fle, date, spin_axis, sc_lon, sc_lat, sc_lon2, sc_lat2, sc_lon_ephem, sc_lat_ephem, spin_lon, spin_lat, spin_lon_eq, spin_lat_eq, sc_position, sc_velocity, spin_axis_angle):
         
-    print(f"date, spin_axis_angle, sc_lon[V], sc_lat[V], sc_lon[E], sc_lat[E], sc_lon[EPH], sc_lat[EPH], spin_lon, spin_lat, spin_lon_eq, spin_lat_eq, spin_axis, sc_position, sc_velocity", file=fle)
+    print(f"date, spin_axis_angle, sc_lon[V], sc_lat[V], sc_lon[E], sc_lat[E], sc_lon[EPH], sc_lat[EPH], spin_lon, spin_lat, spin_lon_eq_J2000, spin_lat_eq_J2000, spin_axis, sc_position, sc_velocity", file=fle)
     print( 
         f"{date}, {spin_axis_angle}, {sc_lon}, {sc_lat}, {sc_lon2}, {sc_lat2}, {sc_lon_ephem}, {sc_lat_ephem}, {spin_lon}, {spin_lat}, {spin_lon_eq}, {spin_lat_eq}, {spin_axis}, {sc_position}, {sc_velocity}", file=fle
         )
@@ -75,8 +75,21 @@ def sph_to_cart(lat, lon):
     return np.array([x, y, z])
 
 
-def convert_spin_to_J2000(lon_spin, lat_spin):
-    
+def convert_spin_to_J2000(epoch, lon_spin_HAE, lat_spin):
+    # lon_spin in HAE epoch
+
+    # note here that the spin angle is in the epoch 
+    epoch_time = to_unix_seconds(epoch)
+
+    # Convert epoch to Julian centuries since J2000
+    dt = datetime.fromtimestamp(epoch_time, tz=timezone.utc)
+    year = dt.year
+
+#    HAE_lon = EC_J2000_lon + (year - 2000.0) * 0.01397
+    lon_spin = lon_spin_HAE - ((year - 2000.0) * 0.01397)
+#   this moves us from the HAE Mean-of-Date o Ecliptic J2000
+#   the corection factor was applied in Jun 2026
+
     xyz = sph_to_cart(lat_spin, lon_spin)
     spin_eq = rot_ecl_to_eq @ xyz
 
@@ -643,9 +656,11 @@ spin_axis, lat_spin, lon_spin, lat_sc, lon_sc, diag =\
      compute_spin_axis_from_cdf_gen(cdf, lat_sc3, lon_sc3)
 
 # Convert spin axis to equatorial/J2000-like lon/lat
-lon_spin_eq, lat_spin_eq = convert_spin_to_J2000(lon_spin, lat_spin)
+lon_spin_eq, lat_spin_eq = convert_spin_to_J2000(avg_epoch, lon_spin, lat_spin)
 
 # Defaults in case SPICE call fails
+lon_ephem = np.nan
+lat_ephem = np.nan
 lon_ephem_deg = np.nan
 lat_ephem_deg = np.nan
 
@@ -656,25 +671,15 @@ try:
     lon_ephem_deg = (lon_ephem * spice.dpr()) % 360.0
     lat_ephem_deg = lat_ephem * spice.dpr()
 
+    print(f"1S07 IMAP Position relative to Sun in ECLIPJ2000:")
+    print(f"  X (km): {position[0]:.2f}")
+    print(f"  Y (km): {position[1]:.2f}")
+    print(f"  Z (km): {position[2]:.2f}")
+    print(f"  Radius (km): {radius:.2f}")
+    print(f"  RA / Longitude (deg): {(lon_ephem * spice.dpr()) % 360:.2f}")
+    print(f"  DEC / Latitude (deg): {lat_ephem * spice.dpr():.2f}")
 except Exception as e:
     print(f"Error calculating IMAP position: {e}")
-    print("Using NAIF ID '391' L1 Lagrangian point as fallback IMAP proxy.")
-    # Get Position of L1 Lagrange Point (NAIF ID: 391) relative to the SUN
-
-    position, light_time = spice.spkpos('391', et, 'ECLIPJ2000', 'NONE', 'SUN')
-    radius, lon_ephem, lat_ephem = spice.reclat(position)
-
-    lon_ephem_deg = (lon_ephem * spice.dpr()) % 360.0
-    lat_ephem_deg = lat_ephem * spice.dpr()
-
-
-print(f"1S07 IMAP Position relative to Sun in ECLIPJ2000:")
-print(f"  X (km): {position[0]:.2f}")
-print(f"  Y (km): {position[1]:.2f}")
-print(f"  Z (km): {position[2]:.2f}")
-print(f"  Radius (km): {radius:.2f}")
-print(f"  RA / Longitude (deg): {(lon_ephem * spice.dpr()) % 360:.2f}")
-print(f"  DEC / Latitude (deg): {lat_ephem * spice.dpr():.2f}")
 
 
 #print("Spin axis (HAE Cartesian):", spin_axis)
@@ -685,12 +690,11 @@ print(f"  DEC / Latitude (deg): {lat_ephem * spice.dpr():.2f}")
 
 with open(f'output/imap_lo_position_{date1}.csv', 'w') as fle:
 
-    print_coord(fle, date1, spin_axis,
-            lon_sc, lat_sc, lon_sc3, lat_sc3,
-            lon_ephem_deg, lat_ephem_deg, lon_spin,
-            lat_spin, lon_spin_eq, lat_spin_eq,
-            diag["sc_position"], diag["sc_velocity"], diag["spin_angle"])
-
+    print_coord(fle, date1, spin_axis, 
+                lon_sc, lat_sc, lon_sc3, lat_sc3, 
+                lon_ephem, lat_ephem, lon_spin, 
+                lat_spin, lon_spin_eq, lat_spin_eq,
+                diag["sc_position"], diag["sc_velocity"], diag["spin_angle"])
    
 #fluxT = flux.T
 #dflxT = dflx.T

@@ -13,10 +13,17 @@ import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime, timedelta
+import shutil
 
 data_dir_path = '../input_l1b_histrates'
 data_dir = Path(data_dir_path)
 goodtime_file = '../input_goodtime/imap_lo_goodtimes.csv'
+
+# Copy goodtimes file into current directory
+local_goodtime = './' + Path(goodtime_file).name
+shutil.copy2(goodtime_file, local_goodtime)
+
+print(f"Copied goodtimes file to {local_goodtime}")
 
 outdir_hy = './l1b_hist_csv/Hydrogen'
 outdir_ox = './l1b_hist_csv/Oxygen'
@@ -95,6 +102,7 @@ time_end_copy = np.linspace(0,0,ngoodt)
 time_end_copy[:] = time_end[:]
 
 for file in data_dir.glob("*.cdf"):
+    print("file = ", file)
     try:
         file_path = str(file)      
         basename = file.name
@@ -107,50 +115,56 @@ for file in data_dir.glob("*.cdf"):
             else:
                 el='o'
                 outdir=outdir_ox
-                
-            esa_dict = {}   # dictionary to store ESA arrays
-    
-            counts = cdf[f'{el}_counts'][...][:, :, :]
-            epoch       = cdf['epoch'][:]
-            met = met_from_epoch(epoch)
+            
+            esa_dict = {}
 
-            unfiltered = {
-                'counts': counts
-            }
+            counts = np.array(cdf[f'{el}_counts'][...], dtype=float, copy=True)
+
+            epoch = cdf['epoch'][:]
+            met = met_from_epoch(epoch)
+            met_stop = met.copy()
+            met_stop += 300.0
+      #      met += 30.0
+            # padded the boundaries
+            
+            print("Start met:", met[0])
+            u = np.unique(met)
+
+            print("First 10 distinct met values:", u[:10])
+            print("First 10 intervals:", np.diff(u[:11]))
+            print("max interval:", max(np.diff(u[:])))
+            print("Stop  met:", met[-1])
 
             for esa_idx in range(1, 8):
                 esa = esa_idx - 1
-                
-                for bin in range(0,60):
-                    # reset the time_end array
-                    time_end[:] = time_end_copy[:]
+            
+                total_cnts = np.zeros(60)
 
-                    for itime in range(0,ngoodt):
-                    # now pull out any goodtime period that has been blown out
-                        if esa_flags[itime,esa] == 0:
-                            time_end[itime] = time_start[itime]
+                for bin in range(60):
+
+                    time_end_eff = time_end_copy.copy()
+
+                    for itime in range(ngoodt):
+
+                        # ESA disabled for this goodtime interval
+                        if esa_flags[itime, esa] == 0:
+                            time_end_eff[itime] = time_start[itime]
+
+                        # spin bin outside allowed goodtime bin range
+                        if (bin > bin_end[itime]) or (bin < bin_start[itime]):
+                            time_end_eff[itime] = time_start[itime]
                         
-                        if (bin > bin_end[itime]) or (bin < bin_start[itime] ):
-                            time_end[itime] = time_start[itime]
+                        
+                    time_end_eff[ngoodt-1] -= (7*60) 
 
-                    met_check  = (met[:, None] >= time_start) & (met[:, None] <= time_end)
-                    event_pass = met_check  
-                    mask = np.any(event_pass, axis=1) 
+                    met_check = (met[:, None] >= time_start) & (met_stop[:, None] <= time_end_eff)
+                    mask = np.any(met_check, axis=1)
 
-#                    for k in ('counts',):
-                    unfiltered['counts'][~mask,esa,bin] = 0
+                    # Do NOT modify counts. Just sum accepted histogram times for this ESA/bin.
+                    total_cnts[bin] = np.sum(counts[mask, esa, bin])
+
+                nep_cnts = np.zeros(60)
                 
-                nep_cnts = np.zeros((60))
-                
-                time_end[:] = time_end_copy[:]
-
-                met_check  = (met[:, None] >= time_start) & (met[:, None] <= time_end)
-                event_pass = met_check 
-                mask = np.any(event_pass, axis=1)
-                 
-                filtered_cnts = unfiltered['counts'][mask,esa,:] 
-                total_cnts = np.sum(filtered_cnts.T, axis=1)
-
                 nep_cnts[0:10] = total_cnts[50:60]
                 nep_cnts[10:30] = total_cnts[0:20]
                 nep_cnts[30:60] = total_cnts[20:50]

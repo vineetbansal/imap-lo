@@ -7,7 +7,7 @@ echo "3S3_l1b_Oxy_quickmaps L1B histrates to spin angle distribution Started "
 python3.11 l1b_to_spin.py
 
 #Create Maps
-python3.11 map_SCFrame.py
+python3.11 map_SCFrame_V2.py
 
 # Convert csv to text
 python3.11 csv_to_soc.py

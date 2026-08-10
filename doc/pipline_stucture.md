@@ -1,7 +1,7 @@
 # IMAP-Lo Report Pipeline Structure
 
-Date: 2026-04-17
-Version: 2.0 (Draft)
+Date: 2026-05-04
+Version: 3.0 (Draft)
 
 ## BLUF
 
@@ -66,7 +66,7 @@ Used for selective reprocessing of portions of the pipeline.
 
 * `input_l1c_david/` — Supplemental Level 1C variants provided for operations support while SPICE content lagged official deliveries.
 
-## 5. Standard Level 1 Pipeline Products
+## 5. Standard Process 1 Pipeline Products
 
 * `1S02-CDF-l1b-histRates/` — Histogram rates exported to CSV
 * `1S02-CDF-l1b-monitorRates/` — Monitor rates exported to CSV
@@ -89,7 +89,7 @@ Used for selective reprocessing of portions of the pipeline.
 * `1S21_TOFspinbin_hires_0.6/` — High-resolution 0.6° spin-phase products
 * `1S22_TOFspinbin_hires_1.2/` — High-resolution 1.2° spin-phase products
 
-## 6. Off-Pipeline Level 1 Products
+## 6. Off-Pipeline Process 1 Products
 
 ### `1S12_TOFideas/`
 
@@ -99,16 +99,16 @@ Interactive TOF analysis utilities using CSV selection sheets. Supports filterin
 
 Used to evaluate alternate Level 1C position products.
 
-## 7. Higher-Level Products
+## 7. Higher-Process Products
 
-### Level 3
+### Process 3
 
 * `3S2_l1b_histRates_autoram/` — Moment and fit peaks in spin-phase distributions
 * `3S2_l1b_quickmaps/` — Hydrogen flux maps from Level 1B histograms
 * `3S3_l1b_Oxy_quickmaps/` — Oxygen quick maps
 * `3S4_l1b_SputterBootstrap/` — Sputter/bootstrap corrected histogram maps
 
-### Level 4
+### Process  4
 
 * `4S1_starsensorModel/` — Star sensor simulations using stellar maps
 
@@ -129,6 +129,50 @@ Used to evaluate alternate Level 1C position products.
 * Documentation coverage remains incomplete in several areas.
 * Some supplemental inputs exist due to lagging upstream products.
 * Legacy content should be reviewed for retirement or consolidation.
+
+## 10. User groups
+
+The products listed above are used by different groups for a variety of projects. 
+Below we group the products by group
+
+### CAVA products
+
+These products are related to IMAP-Lo maps
+* `1S04_l1b_histRates_autogoodtimes/` — Automatically generated good-time intervals
+* `3S2_l1b_quickmaps/` — Hydrogen flux maps from Level 1B histograms
+* `3S3_l1b_Oxy_quickmaps/` — Oxygen quick maps
+* `3S4_l1b_SputterBootstrap/` — Sputter/bootstrap corrected histogram maps
+
+### Star Sensor 
+
+These are the products needed for the star sensor data
+
+* `1S06_l1b_prostar_plots/` — Daily processed star sensor plots
+* `4S1_starsensorModel/` — Star sensor simulations using stellar maps
+
+### TOF -related
+
+These are all various types of binning for direct events and histogram products
+
+* `1S08_TOFreport_AllTimes/` — Daily TOF reports over all times
+* `1S09_TOFreport_Goodtimes/` — TOF reports filtered by good times
+* `1S10_histrates_Goodtimes/` — Histogram rates filtered by good times
+* `1S13_TOFspinbin/` — TOF distributions binned into 6° NEP phase bins for H and O
+* `1S14_l1b_histogram_spinangle/` — Corresponding histogram spin-angle distributions
+* `1S15_TOFspinbin_goodtime/` — Good-time filtered TOF spin-bin distributions
+* `1S16_l1b_histogram_spinangle_goodtime/` — Good-time filtered histogram spin-angle distributions
+* `1S17_l1a_TOFspinbin/` — Level 1A TOF spin-phase validation products
+* `1S18_l1a_TOFspinbin_histogramFilter/` — Level 1A DE products binned identically to histograms for cross-validation
+* `1S20_TOFspinbin_hires_0.3/` — High-resolution 0.3° spin-phase products
+* `1S21_TOFspinbin_hires_0.6/` — High-resolution 0.6° spin-phase products
+* `1S22_TOFspinbin_hires_1.2/` — High-resolution 1.2° spin-phase products
+
+### Crossing Tubes
+
+Products needed for evaluation of ISN paramters
+
+* `3S2_l1b_histRates_autoram/` — Moment and fit peaks in spin-phase distributions
+
 
 
 

@@ -98,7 +98,9 @@ def filter_and_write_cdf( args):
     met       = cdf['event_met'][:]
     esa_step  = cdf['esa_step'][:]
     spinbin   = cdf['spin_bin'][:]
-    spinbin2  = spinbin * 60 / 3600  # convert from 0.1 deg bins to 6 deg bins
+    spinbin2 = (spinbin * 60 / 3600).astype(int)
+    # this needs to be fixed everywhere
+    
     badtime   = cdf['badtimes'][:] # not used, but reserved for future filtering
     tof0      = cdf['tof0'][:]
     tof1      = cdf['tof1'][:]
@@ -108,6 +110,10 @@ def filter_and_write_cdf( args):
     tof1s     = tof1 - 0.5 * tof3
     absent    = cdf['absent'][:]
     mode_bit  = cdf['mode_bit'][:]
+
+    n_gt_3600 = np.sum(spinbin > 3600)
+
+    print("Number of spinbin > 3600 =", n_gt_3600)
 
     cdf.close()
 
@@ -148,7 +154,9 @@ def filter_and_write_cdf( args):
     esa_flags  = df[['esa1','esa2','esa3','esa4','esa5','esa6','esa7']].to_numpy().copy()
 
     ngoodt = len(time_end)
+    print("ngoodt = ", ngoodt)
     time_end_copy = time_end.copy()
+    ntot = 0
 
     # -------------------------------
     # Write to CSV
@@ -169,6 +177,7 @@ def filter_and_write_cdf( args):
                 # now pull out any goodtime period that has been blown out
                 if esa_flags[itime,esa_index] == 0:
                     time_end[itime] = time_start[itime] - 1
+                    print("pulling shit out!!")
     
     # -------------------------------
     # Vectorized mask calculations
@@ -214,8 +223,9 @@ def filter_and_write_cdf( args):
     #        esa_check = esa_flags[]
 
         # Combine checks per event per interval
-            event_pass =  esa_check & absent_check & mode_check & met_check & spin_check & tof0_check & tof1_check & tof2_check  # shape (N_events, N_goodtimes)
-
+ #         event_pass =  esa_check & absent_check & mode_check & met_check & spin_check & tof0_check & tof1_check & tof2_check  # shape (N_events, N_goodtimes)
+            event_pass =  esa_check & absent_check & mode_check  & tof2_check & met_check & spin_check # shape (N_events, N_goodtimes)
+            # this less restrictive TOF selection matches the flight code
     #  print("met.shape:", met.shape)
     #  print("time_start.shape:", time_start.shape)
     #  print("spinbin2.shape:", spinbin2.shape)
@@ -262,9 +272,10 @@ def filter_and_write_cdf( args):
                     filtered['mode_bit'], filtered['spinbin'], filtered['esa_step']
                     ):
                         print(','.join(map(str, row)), file=fle)
-    
+            ntot += mask.sum()
             print(f"1S15: ESA={esa}, filtered {mask.sum()} / {N} rows written to {out_file}_ESA{esa}.csv")
-            
+    
+    print(f"total events = ", ntot, "for selection species type ", args.species)
 # main
 
 args = argParsing()

@@ -28,8 +28,6 @@ nra = 60
 ncolat = 30
 nmap = nra*ncolat*nesa
 
-
-
 eff_h = 1.0
 
 esa_energy = {
@@ -101,6 +99,9 @@ def get_brate(YD,esa):
     return brate
 
 for pp in [75,90,105]:
+    pivot_deg = pp + 4.0
+    pivot = np.radians(pivot_deg)
+    
     work_dir1 = f'./outdir/pivot_{pp}/daily'
     map_dir = f"./outdir/pivot_{pp}/maps/"
     
@@ -112,6 +113,8 @@ for pp in [75,90,105]:
     
     for esa in range(1,8):
         print(esa)
+
+        map_manifest_rows = []
         
         h_cnts_map = np.zeros((30,60))        
         exposure = np.zeros((30,60))
@@ -131,8 +134,9 @@ for pp in [75,90,105]:
         
         stonoise_map = np.zeros((30,60))
         stonoise_var_map = np.zeros((30,60))
+
+        cosalpha_map = np.zeros((30,60))
         
-    
         for filepath in data_dir.glob(f'*esa{esa}.csv'):
             
             file = str(filepath)            
@@ -140,6 +144,36 @@ for pp in [75,90,105]:
             YD = filename.split('_')[2]
 
             df = pd.read_csv(file)
+
+            # Capture provenance for this daily file if present
+            prov_cols = [
+                "date_yyyymmdd",
+                "yd",
+                "repoint",
+                "pivot",
+                "l1b_product",
+                "l1b_filename",
+                "l1b_path",
+            ]
+
+            if all(c in df.columns for c in prov_cols):
+                prov = df[prov_cols].iloc[0].to_dict()
+            else:
+                prov = {
+                    "date_yyyymmdd": "",
+                    "yd": YD,
+                    "repoint": "",
+                    "pivot": pp,
+                    "l1b_product": "",
+                    "l1b_filename": "",
+                    "l1b_path": "",
+                }
+
+            prov["esa"] = esa
+            prov["daily_csv"] = filename
+            prov["daily_csv_path"] = str(Path(file).resolve())
+            map_manifest_rows.append(prov)
+
             ps_ra = df['ra'].values
             ps_dec = df['dec'].values
             counts = df['counts'].values
@@ -158,6 +192,17 @@ for pp in [75,90,105]:
                     if (jmap == 30):
                         jmap = 0
                     
+                    # Bin center angle in radians
+                    alpha = np.radians((ia + 0.5) * 6.0)
+
+                    # coord system with x = NEP, y = RAM, z = Sun
+                    # look_x = np.sin(pivot)*np.cos(alpha)
+                    look_y = np.sin(pivot)*np.sin(alpha)
+                    # look_z = np.cos(pivot)
+                    cosalpha = look_y
+
+                    cosalpha_map[jmap, imap] = cosalpha
+
                     h_cnts_map[jmap,imap] += counts[ia]
                     exposure[jmap,imap] += expo[ia]
                     
@@ -196,7 +241,7 @@ for pp in [75,90,105]:
                     # represent uncertainty in terms of variance (Poisson counts)
                     if (h_cnts_map[jmap,imap] > 0.0):
                         h_fvar_map[jmap,imap] = h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap]
-                        h_fvto_map[jmap,imap] = h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap] + h_fser_map[jmap,imap]**2
+                        h_fvto_map[jmap,imap] = (h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap]) + h_fser_map[jmap,imap]**2
                     else:
                         h_fvar_map[jmap,imap] = 0.0
                         h_fvto_map[jmap,imap] = h_fser_map[jmap,imap]**2
@@ -244,3 +289,28 @@ for pp in [75,90,105]:
 
         bflux_var_file = pd.DataFrame(back_flux_var)
         bflux_var_file.to_csv(map_dir+f"/map_bfvar_esa{esa}.csv", index=False)
+
+        cosalpha_file = pd.DataFrame(cosalpha_map)
+        cosalpha_file.to_csv(map_dir+f"/map_cosalpha_esa{esa}.csv", index=False)
+
+        # Write map-level provenance manifest for this pivot/ESA
+        if map_manifest_rows:
+
+            manifest_df = pd.DataFrame(map_manifest_rows)
+
+            manifest_df["date_yyyymmdd"] = manifest_df["date_yyyymmdd"].astype(str)
+            manifest_df["repoint"] = manifest_df["repoint"].astype(str)
+
+            manifest_df = (
+                manifest_df
+                .drop_duplicates()
+                .sort_values(
+                    by=["date_yyyymmdd", "repoint"],
+                    ascending=[True, True]
+                )
+            )
+
+            manifest_df.to_csv(
+                map_dir + f"/map_l1b_manifest_esa{esa}.csv",
+                index=False
+            )

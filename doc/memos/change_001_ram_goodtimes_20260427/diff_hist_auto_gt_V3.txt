@@ -1,0 +1,45 @@
+213a214,225
+>                         
+>     parser.add_argument('-tram90', '--tcutram90',
+>                         help='the cut rate for 90 deg PPM ram direction Esteps 6 and 7 (e.g., 0.0028 * 2.0) ',
+>                         dest='tcutram90',
+>                         type=float,
+>                         default=0.0056)
+>                         
+>     parser.add_argument('-tramoff', '--tcutramOff',
+>                         help='the cut rate for PPM angles other than 90 deg ram direction Esteps 6 and 7 (e.g., 0.0035 * 2.0) ',
+>                         dest='tcutramOff',
+>                         type=float,
+>                         default=0.007)
+315a328
+>     bg_rate_ram_nom = args.tcutram90
+317a331
+>     bg_rate_ram_nom = args.tcutramOff
+327d340
+< 
+329a343,345
+> exposure_ram67 = 420 * ncycle_ave * 0.5 * 2.0 / 7.0 #only counting exposure times for E-steps 6 and 7
+> 
+> # Anti-ram direction counts (bins 1–29) for ESA steps 1 through 7
+332a349,354
+> # Ram direction counts (bins 1–29) for ESA steps 6 and 7
+> d_ram = (
+>     np.sum(cdf['h_counts'][:, 5:7, 0:20], axis=(1, 2)) +
+>     np.sum(cdf['h_counts'][:, 5:7, 50:60], axis=(1, 2))
+>     )
+> 
+419c441,444
+< 
+---
+>         
+>         ram_cnts = np.sum(d_ram[i0:i1])
+>         ram_rate = ram_cnts / exposure_ram67
+>                         
+422c447
+<         if (antiram_rate < bg_rate_nom):
+---
+>         if (antiram_rate < bg_rate_nom) and (ram_rate < bg_rate_ram_nom):
+441c466
+<         if (antiram_rate >= bg_rate_nom):
+---
+>         if (antiram_rate >= bg_rate_nom) or (ram_rate >= bg_rate_ram_nom):

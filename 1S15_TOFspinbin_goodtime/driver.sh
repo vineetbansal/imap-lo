@@ -84,7 +84,6 @@ find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | wh
 
     fi
 
-
     odir="${datadirCO}"
     for esa in {1..7}; do
         files=( "$odir"/*_ESA${esa}.csv )
@@ -111,7 +110,10 @@ find "$input" -maxdepth 1 -type f -name "*.cdf" -mtime "$delaytime" -print0 | wh
         rm -f "${in_files[@]}"
     done
 
+    cp $goodtime_file ./
+    
     files=( "$odir"/TOF_select_ESA*.csv )
+
     #(( ${#files[@]} == 0 )) && exit 0
     if (( ${#files[@]} > 0 )); then
 

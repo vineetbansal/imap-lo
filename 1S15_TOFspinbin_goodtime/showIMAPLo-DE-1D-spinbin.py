@@ -171,7 +171,7 @@ for esa in range(1,8):
     valid_tof0 = (TOF0 >= 0.0)
     valid_tof1 = (TOF1 >= 0.0)
     valid_tof2 = (TOF2 >= 0.0)
-    valid_tof3 = (TOF3 >= 0.0)
+    valid_tof3 = np.isfinite(TOF3) & (TOF3 >= 0.0) & (TOF3 < 20.0)
     valid_checksum = (absent == 0) & (mode_bit == 1)
 
     use_event = np.ones(n, dtype=bool)

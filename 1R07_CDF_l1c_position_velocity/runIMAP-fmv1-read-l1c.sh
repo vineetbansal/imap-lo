@@ -17,6 +17,6 @@ else
     echo "   l1c_reader.py input:" $file
     echo "   l1c_reader.py output:" $output
     
-    $python $pydir/l1c_reader.py -f $file -o $output 
+    $python $pydir/l1c_reader_V4.py -f $file -o $output 
 
 fi

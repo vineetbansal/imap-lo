@@ -39,7 +39,9 @@ label_map = {
     "fvto": "VarTotal Intensity (cm -4 s -2 sr -2 keV -2)",
     "rate": "Rate (s -1)",
     "rvar": "Variance Rate (s -2)",
-    "fser": "Sys Int Uncertainty (cm -2 s -1 sr -1 keV -1)"
+    "fser": "Sys Int Uncertainty (cm -2 s -1 sr -1 keV -1)",
+    "fsel": "Lower Sys Int Uncertainty (cm -2 s -1 sr -1 keV -1)",
+    "fseu": "Upper Sys Int Uncertainty (cm -2 s -1 sr -1 keV -1)",
 }
 
 
@@ -108,6 +110,7 @@ def csv_to_map_yaml(
 
 # --- Config ---
 species_list = ["H", "O"] 
+case_list = ["A","R"] # A for All, R for Ram-only
 year, end_day, tag = latest_monday_tag()
 start_day = '20251108'
 sec_layr = f'{start_day}_{end_day}_lo_{year}'
@@ -123,147 +126,183 @@ DATA_TYPES = {
     "V": "fvar",
     "U": "rvar",
     "S": "fser",
-    "X": "flxu"
+    "X": "flxu",
+    "L": "fsel",
+    "T": "fseu"
 }
 for species in species_list:
-    for pp in [75, 90, 105]:
-        pp_str = f"p{pp:03d}"
-        if species=="H":
-            work_dir1 = f'../3S2_l1b_quickmaps/outdir/pivot_{pp}/maps'
-            base_cava = '../3S2_l1b_quickmaps/outdir/cava'
-        else:
-            work_dir1 = f'../3S3_l1b_Oxy_quickmaps/outdir/pivot_{pp}/maps'
-            base_cava = '../3S3_l1b_Oxy_quickmaps/outdir/cava'
-        
+    for case in case_list:
+        for pp in [75, 90, 105]:
+            pp_str = f"p{pp:03d}"
 
-        # Create all 1st-layer dirs: cava_txt_lo_H_{tag}{pp_str}{suffix}
-        yaml_dirs = {}
-        for suffix, desc in DATA_TYPES.items():
-            d = f'{base_cava}/cava_txt_lo_{species}_{tag}{pp_str}{suffix}/{sec_layr}_{desc}'
-            yaml_dirs[desc] = d
-            os.makedirs(d, exist_ok=True)
-
-        for esa in range(1, 8):
             if species=="H":
-                energy = hy_esa_energy[esa]
+                if case=="A":
+                    work_dir1 = f'../3S2_l1b_quickmaps/outdir/pivot_{pp}/maps'
+                    base_cava = '../3S2_l1b_quickmaps/outdir/cava'
+                else: 
+                    work_dir1 = f'../3S5_l1b_ram_maps/outdir/pivot_{pp}/maps'
+                    base_cava = '../3S5_l1b_ram_maps/outdir/cava'
             else:
-                energy = ox_esa_energy[esa]
-            print(pp, esa)
+                if case=="A":
+                    work_dir1 = f'../3S3_l1b_Oxy_quickmaps/outdir/pivot_{pp}/maps'
+                    base_cava = '../3S3_l1b_Oxy_quickmaps/outdir/cava'
+                else:
+                    work_dir1 = f'../3S6_l1b_oxy_ram_maps/outdir/pivot_{pp}/maps'
+                    base_cava = '../3S6_l1b_oxy_ram_maps/outdir/cava'
+        
+            # Create all 1st-layer dirs: cava_txt_lo_H_{tag}{pp_str}{suffix}
+            yaml_dirs = {}
+            for suffix, desc in DATA_TYPES.items():
+                d = f'{base_cava}/cava_txt_lo_{species}_{tag}{pp_str}{suffix}/{sec_layr}_{desc}'
+                yaml_dirs[desc] = d
+                os.makedirs(d, exist_ok=True)
 
-            # --- Shared exposure (used by flux, rate, stbg, func, runc, cunc) ---
-            expo_file = os.path.join(work_dir1, f"map_expo_esa{esa}.csv")
-            if not os.path.exists(expo_file):
-                continue
+            for esa in range(1, 8):
+                if species=="H":
+                    energy = hy_esa_energy[esa]
+                else:
+                    energy = ox_esa_energy[esa]
+                print(pp, esa)
 
-            # --- Flux variance view: "flux" and "variance" both use variance map; expo is exposure ---
-            flux_file = os.path.join(work_dir1, f"map_flux_esa{esa}.csv")
-            fvar_file = os.path.join(work_dir1, f"map_fvar_esa{esa}.csv")
-            if os.path.exists(flux_file) and os.path.exists(fvar_file) and os.path.exists(expo_file):
-                for csv_src, stem, lbl in [
-                    (flux_file, "flux", label_map["flux"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (fvar_file, "variance", label_map["fvar"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["flux"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                # --- Shared exposure (used by flux, rate, stbg, func, runc, cunc) ---
+                expo_file = os.path.join(work_dir1, f"map_expo_esa{esa}.csv")
+                if not os.path.exists(expo_file):
+                    continue
+
+                # --- Flux variance view: "flux" and "variance" both use variance map; expo is exposure ---
+                flux_file = os.path.join(work_dir1, f"map_flux_esa{esa}.csv")
+                fvar_file = os.path.join(work_dir1, f"map_fvar_esa{esa}.csv")
+                if os.path.exists(flux_file) and os.path.exists(fvar_file) and os.path.exists(expo_file):
+                    for csv_src, stem, lbl in [
+                        (flux_file, "flux", label_map["flux"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvar_file, "variance", label_map["fvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["flux"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="flux", species=species)
+                            
+                # --- New (5/1/2026) Flux variance total: This total variance includes statistical and systematic error
+                fvto_file = os.path.join(work_dir1, f"map_fvto_esa{esa}.csv")
+                if os.path.exists(flux_file) and os.path.exists(fvto_file) and os.path.exists(expo_file):
+                    for csv_src, stem, lbl in [
+                        (flux_file, "flux", label_map["flux"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvto_file, "variance", label_map["fvto"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["flxu"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="fvto", species=species)
+
+                # --- Rate variance view: "flux" and "variance" both use variance map; expo is exposure ---
+                rate_file = os.path.join(work_dir1, f"map_rate_esa{esa}.csv")
+                rvar_file = os.path.join(work_dir1, f"map_rvar_esa{esa}.csv")
+                if os.path.exists(rate_file) and os.path.exists(rvar_file) and os.path.exists(expo_file):
+                    for csv_src, stem, lbl in [
+                        (rate_file, "flux", label_map["rate"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (rvar_file, "variance", label_map["rvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["rate"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="rate", species=species)
+
+                # --- Cnts: cnts + expo + variance (use cnts as variance if no cnts_var) ---
+                cnts_file = os.path.join(work_dir1, f"map_cnts_esa{esa}.csv")
+                cnts_var_src = cnts_file
+                if os.path.exists(cnts_file):
+                    for csv_src, stem, lbl in [
+                        (cnts_file, "flux", label_map["cnts"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (cnts_var_src, "variance", label_map["cnts"]),
+                    ]:
+                        out = os.path.join(yaml_dirs["cnts"], f"IMAPLo-{energy}KeV-{stem}.txt")
                         csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="flux", species=species)
-                        
-            # --- New (5/1/2026) Flux variance total: This total variance includes statistical and systematic error
-            fvto_file = os.path.join(work_dir1, f"map_fvto_esa{esa}.csv")
-            if os.path.exists(flux_file) and os.path.exists(fvto_file) and os.path.exists(expo_file):
-                for csv_src, stem, lbl in [
-                    (flux_file, "flux", label_map["flux"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (fvto_file, "variance", label_map["fvto"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["flxu"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                                        label=lbl, pivot=pp, metadata="cnts", species=species)
+
+                # --- Stbg (B): stbg as flux, expo, stbg variance from precomputed svar map ---
+                stbg_file = os.path.join(work_dir1, f"map_stbg_esa{esa}.csv")
+                svar_file = os.path.join(work_dir1, f"map_svar_esa{esa}.csv")
+                if os.path.exists(stbg_file):
+                    for csv_src, stem, lbl in [
+                        (stbg_file, "flux", label_map["stbg"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (svar_file, "variance", label_map["svar"]),
+                    ]:
+                        out = os.path.join(yaml_dirs["stbg"], f"IMAPLo-{energy}KeV-{stem}.txt")
                         csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="fvto", species=species)
+                                        label=lbl, pivot=pp, metadata="stbg", species=species)
 
-            # --- Rate variance view: "flux" and "variance" both use variance map; expo is exposure ---
-            rate_file = os.path.join(work_dir1, f"map_rate_esa{esa}.csv")
-            rvar_file = os.path.join(work_dir1, f"map_rvar_esa{esa}.csv")
-            if os.path.exists(rate_file) and os.path.exists(rvar_file) and os.path.exists(expo_file):
-                for csv_src, stem, lbl in [
-                    (rate_file, "flux", label_map["rate"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (rvar_file, "variance", label_map["rvar"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["rate"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                # --- Expo (E): expo as flux, expo as exposure, expo variance (no dedicated file yet) ---
+                if os.path.exists(expo_file):
+                    for csv_src, stem, lbl in [
+                        (expo_file, "flux", label_map["expo"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (expo_file, "variance", label_map["expo"]),
+                    ]:
+                        out = os.path.join(yaml_dirs["expo"], f"IMAPLo-{energy}KeV-{stem}.txt")
                         csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="rate", species=species)
+                                        label=lbl, pivot=pp, metadata="expo", species=species)
 
-            # --- Cnts: cnts + expo + variance (use cnts as variance if no cnts_var) ---
-            cnts_file = os.path.join(work_dir1, f"map_cnts_esa{esa}.csv")
-            cnts_var_src = cnts_file
-            if os.path.exists(cnts_file):
-                for csv_src, stem, lbl in [
-                    (cnts_file, "flux", label_map["cnts"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (cnts_var_src, "variance", label_map["cnts"]),
-                ]:
-                    out = os.path.join(yaml_dirs["cnts"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                    csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                    label=lbl, pivot=pp, metadata="cnts", species=species)
+                # Standalone variance products (like cunc): func (from flux variance) and runc (from rate variance)
+                if os.path.exists(fvar_file):
+                    for csv_src, stem, lbl in [
+                        (fvar_file, "flux", label_map["fvar"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvar_file, "variance", label_map["fvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["fvar"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="fvar", species=species)
+                            
+                fser_file = os.path.join(work_dir1, f"map_fser_esa{esa}.csv")            
+                if os.path.exists(fser_file):
+                    for csv_src, stem, lbl in [
+                        (fser_file, "flux", label_map["fser"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvar_file, "variance", label_map["fvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["fser"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="fser", species=species)
+                
+                fsel_file = os.path.join(work_dir1, f"map_fsel_esa{esa}.csv")            
+                if os.path.exists(fsel_file):
+                    for csv_src, stem, lbl in [
+                        (fsel_file, "flux", label_map["fsel"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvar_file, "variance", label_map["fvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["fsel"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="fsel", species=species)
+                
+                fseu_file = os.path.join(work_dir1, f"map_fseu_esa{esa}.csv")            
+                if os.path.exists(fseu_file):
+                    for csv_src, stem, lbl in [
+                        (fsel_file, "flux", label_map["fseu"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (fvar_file, "variance", label_map["fvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["fseu"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="fseu", species=species)
 
-            # --- Stbg (B): stbg as flux, expo, stbg variance from precomputed svar map ---
-            stbg_file = os.path.join(work_dir1, f"map_stbg_esa{esa}.csv")
-            svar_file = os.path.join(work_dir1, f"map_svar_esa{esa}.csv")
-            if os.path.exists(stbg_file):
-                for csv_src, stem, lbl in [
-                    (stbg_file, "flux", label_map["stbg"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (svar_file, "variance", label_map["svar"]),
-                ]:
-                    out = os.path.join(yaml_dirs["stbg"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                    csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                    label=lbl, pivot=pp, metadata="stbg", species=species)
 
-            # --- Expo (E): expo as flux, expo as exposure, expo variance (no dedicated file yet) ---
-            if os.path.exists(expo_file):
-                for csv_src, stem, lbl in [
-                    (expo_file, "flux", label_map["expo"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (expo_file, "variance", label_map["expo"]),
-                ]:
-                    out = os.path.join(yaml_dirs["expo"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                    csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                    label=lbl, pivot=pp, metadata="expo", species=species)
-
-            # Standalone variance products (like cunc): func (from flux variance) and runc (from rate variance)
-            if os.path.exists(fvar_file):
-                for csv_src, stem, lbl in [
-                    (fvar_file, "flux", label_map["fvar"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (fvar_file, "variance", label_map["fvar"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["fvar"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                        csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="fvar", species=species)
-                        
-            fser_file = os.path.join(work_dir1, f"map_fser_esa{esa}.csv")            
-            if os.path.exists(fser_file):
-                for csv_src, stem, lbl in [
-                    (fser_file, "flux", label_map["fser"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (fvar_file, "variance", label_map["fvar"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["fser"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                        csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="fser", species=species)
-
-            if os.path.exists(rvar_file):
-                for csv_src, stem, lbl in [
-                    (rvar_file, "flux", label_map["rvar"]),
-                    (expo_file, "exposure", label_map["expo"]),
-                    (rvar_file, "variance", label_map["rvar"]),
-                ]:
-                    if os.path.exists(csv_src):
-                        out = os.path.join(yaml_dirs["rvar"], f"IMAPLo-{energy}KeV-{stem}.txt")
-                        csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
-                                        label=lbl, pivot=pp, metadata="rvar", species=species)
+                if os.path.exists(rvar_file):
+                    for csv_src, stem, lbl in [
+                        (rvar_file, "flux", label_map["rvar"]),
+                        (expo_file, "exposure", label_map["expo"]),
+                        (rvar_file, "variance", label_map["rvar"]),
+                    ]:
+                        if os.path.exists(csv_src):
+                            out = os.path.join(yaml_dirs["rvar"], f"IMAPLo-{energy}KeV-{stem}.txt")
+                            csv_to_map_yaml(csv_file=csv_src, output_file=out, energy_value=energy, map_year=year,
+                                            label=lbl, pivot=pp, metadata="rvar", species=species)

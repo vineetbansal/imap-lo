@@ -75,8 +75,19 @@ def sph_to_cart(lat, lon):
     return np.array([x, y, z])
 
 
-def convert_spin_to_J2000(lon_spin, lat_spin):
-    
+def convert_spin_to_J2000(epoch, lon_spin_HAE, lat_spin):
+    # lon_spin in HAE epoch
+
+    # note here that the spin angle is in the epoch 
+    epoch_time = to_unix_seconds(epoch)
+
+    # Convert epoch to Julian centuries since J2000
+    dt = datetime.fromtimestamp(epoch_time, tz=timezone.utc)
+    year = dt.year
+
+#    HAE_lon = EC_J2000_lon + (year - 2000.0) * 0.01397
+    lon_spin = lon_spin_HAE - ((year - 2000.0) * 0.01397)
+
     xyz = sph_to_cart(lat_spin, lon_spin)
     spin_eq = rot_ecl_to_eq @ xyz
 
@@ -569,15 +580,15 @@ args = argParsing()
 
 try:
     spice.furnsh('./imap_meta.tm')
-    print("1S07 Kernels loaded successfully!")
+    print("1R07 Kernels loaded successfully!")
 except Exception as e:
-    print(f"1S07 Error loading kernels: {e}")
+    print(f"1R07 Error loading kernels: {e}")
 
 try:
     inst_id = spice.bodn2c('IMAP')
-    print(f"IMAP NAIF ID: {inst_id}")
+    print(f"1R07 IMAP NAIF ID: {inst_id}")
 except:
-    print("IMAP name not found in the loaded kernels.")
+    print("1R07 IMAP name not found in the loaded kernels.")
 
 epoch = datetime(2010, 1, 1, 0, 0, 0)
 
@@ -643,9 +654,11 @@ spin_axis, lat_spin, lon_spin, lat_sc, lon_sc, diag =\
      compute_spin_axis_from_cdf_gen(cdf, lat_sc3, lon_sc3)
 
 # Convert spin axis to equatorial/J2000-like lon/lat
-lon_spin_eq, lat_spin_eq = convert_spin_to_J2000(lon_spin, lat_spin)
+lon_spin_eq, lat_spin_eq = convert_spin_to_J2000(avg_epoch, lon_spin, lat_spin)
 
 # Defaults in case SPICE call fails
+lon_ephem = np.nan
+lat_ephem = np.nan
 lon_ephem_deg = np.nan
 lat_ephem_deg = np.nan
 
@@ -656,7 +669,7 @@ try:
     lon_ephem_deg = (lon_ephem * spice.dpr()) % 360.0
     lat_ephem_deg = lat_ephem * spice.dpr()
 
-    print(f"1S07 IMAP Position relative to Sun in ECLIPJ2000:")
+    print(f"1R07 IMAP Position relative to Sun in ECLIPJ2000:")
     print(f"  X (km): {position[0]:.2f}")
     print(f"  Y (km): {position[1]:.2f}")
     print(f"  Z (km): {position[2]:.2f}")

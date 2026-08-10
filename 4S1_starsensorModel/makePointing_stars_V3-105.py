@@ -161,7 +161,10 @@ zero = -0.06
     
 nbin = 720
 
-offset = - 12.0*2.0*PI/(15.0*1000)
+offset = 0.0
+# right now we are not doing any offset 
+
+# offset = - 12.0*2.0*PI/(15.0*1000)
 # in principle the star sensor is shifted by 12 ms
 
 # offset = -1.5*PI/180.0
@@ -414,7 +417,7 @@ def parse_stars_tyc(args):
 
 #    dtype = [("name", "S"), ("ra", float), ("dec", float), ("mag", float)]
 #    lines = np.loadtxt(args.filestars, delimiter=',', unpack=True, skiprows=1, usecols=(1,2,5,6))
-    s_dtype={'names': ('star', 'ra', 'dec','ec_ra', 'ec_dec','bt','vt'), 'formats': ('S10','f8','f8','f8','f8','f8','f8')}
+    s_dtype={'names': ('star', 'ra', 'dec','ec_ra', 'ec_dec', 'bt', 'vt'), 'formats': ('S10','f8','f8','f8','f8','f8','f8')}
     
     lines = np.loadtxt(args.filestars, delimiter=',', usecols=(1,2,5,6), unpack=True, skiprows=1)
     
@@ -472,6 +475,7 @@ def coords(args, phaseadjust):
     
     
 def star_angles(args, ra_st1, dec_st1, phaseadjust):
+    # the ra and dec angles are in  J2000
     # the spin, nep, and ec vectors make a right handed system
     # nep x ec = spin
     # ec = spin x nep
@@ -758,6 +762,8 @@ df_gt = pd.read_csv(
 
 df_gt.columns = [
     "date",
+    "yyyymmdd",
+    "repoint",
     "met_start",
     "met_stop",
     "bin_start",
@@ -767,7 +773,8 @@ df_gt.columns = [
     "O",
     "exposure",
     "ppm_angle",
-    "ppm_angle_sdc"
+    "ppm_angle_sdc",
+    "spintime"
 ]
 
 # df_gt["date_dt"] = pd.to_datetime(df_gt["date"].astype(str), format="%Y%j")
@@ -837,20 +844,31 @@ bin1 = args.bin[1]
 
 phaseadjust = 0.0
 
-for i in range(0,mspin):
-    
-    sts_spin = star_spin(args, ra_st, dec_st, mag_st, phaseadjust, pivotAng)
-    
-    for j in range(0,nbin):
-        kk = nbin * i + j
-        sts_set[kk] = sts_spin[j]
-           # if (sts_spin[j] < -1.0):
-            #    print(j, sts_spin[j])
+pivotAng_ref = pivotAng
+
+# for offset in [-0.9,-0.6,-0.3, 0.0, 0.3, 0.6, 0.9]:
+for pivot_offset in [0.305]:
+
+    pivotAng = pivotAng_ref + pivot_offset
+
+    for i in range(0,mspin):
         
-sts_ave_arr = sts_ave(sts_set,mspin)
+        sts_spin = star_spin(args, ra_st, dec_st, mag_st, phaseadjust, pivotAng)
+        
+        for j in range(0,nbin):
+            kk = nbin * i + j
+            sts_set[kk] = sts_spin[j]
+            # if (sts_spin[j] < -1.0):
+                #    print(j, sts_spin[j])
+            
+    sts_ave_arr = sts_ave(sts_set,mspin)
    
-phase_best = 0.0
-print_star_results(sts_ave_arr, args.outstring+'_results')
-plot_results(args, sts_ave_arr, args.outstring+'_results')
+    ostr = f"{pivot_offset:+.2f}"
+    ostr = ostr.replace("+", "p").replace("-", "m").replace(".", "d")
+
+    phase_best = 0.0
+
+    print_star_results(sts_ave_arr, args.outstring+'_'+ostr+'_results')
+    plot_results(args, sts_ave_arr, args.outstring+'_'+ostr+'_results')
     
     

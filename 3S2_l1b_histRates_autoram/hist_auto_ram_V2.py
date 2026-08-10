@@ -497,6 +497,12 @@ for key in sorted(hist_latest):
         epoch       = cdf['epoch'][:]
         met = met_from_epoch(epoch)
 
+        file_met_start = np.nanmin(met)
+        file_met_end   = np.nanmax(met)
+
+        time_start_file = np.maximum(time_start, file_met_start)
+        time_end_file   = np.minimum(time_end,   file_met_end)
+
         # ------------------------------------------
         # Now process ESA1..ESA4 and write results
         # ------------------------------------------
@@ -520,20 +526,57 @@ for key in sorted(hist_latest):
             expo = np.zeros(60, dtype=float)
 
             for bin in range(60):
-                time_end[:] = time_end_copy[:]
+ #               time_end[:] = time_end_copy[:]
+
+                ts_use = time_start_file.copy()
+                te_use = time_end_file.copy()
 
                 for itime in range(ngoodt):
                     if esa_flags[itime, esa_col] == 0:
-                        time_end[itime] = time_start[itime]
+                        te_use[itime] = ts_use[itime]
 
                     if (bin > bin_end[itime]) or (bin < bin_start[itime]):
-                        time_end[itime] = time_start[itime]
+                        te_use[itime] = ts_use[itime]
 
-                met_check = (met[:, None] >= time_start) & (met[:, None] <= time_end)
+                good_intervals = te_use > ts_use
+
+                met_check = (met[:, None] >= ts_use[None, :]) & (met[:, None] <= te_use[None, :])
                 mask = np.any(met_check, axis=1)
 
+    
+                # ---------------------------------------------------------
+                # Counts
+                # ---------------------------------------------------------
+
                 total_cnts[bin] = np.sum(counts[mask, esa_col, bin])
-                expo[bin] = np.count_nonzero(mask) * 4.0 * tspin / ( 60.0 * 7.0 )
+
+                # ---------------------------------------------------------
+                # Original exposure estimate
+                # ---------------------------------------------------------
+
+                # for each histogram interval there are 7 ESA steps x 2 spins x 2 spins = 28
+                expo[bin] = np.count_nonzero(mask) * 28.0 * tspin / (60.0 * 7.0)
+
+                # ---------------------------------------------------------
+                # independent exposure from goodtime intervals clipped to this file
+                exposure_goodtime_total = np.sum(te_use[good_intervals] - ts_use[good_intervals])
+
+                # since this is already for one spin bin and one ESA after filtering,
+                # only divide by 7 if the goodtime duration still represents all ESA cycling time
+                expo_check = exposure_goodtime_total / ( 7.0 * 60.0 )
+
+                # ---------------------------------------------------------
+                # Sanity check
+                # ---------------------------------------------------------
+
+                expo_diff = expo[bin] - expo_check
+                
+                if (bin == 0) and (abs(expo_diff) > 1e-3):
+                        print(
+                            f"Exposure mismatch {hist_file.name} {element} {esa_name} bin={bin:02d} "
+                            f"expo={expo[bin]:.3f} expo_check={expo_check:.3f} diff={expo_diff:.3f} "
+                            f"nmask={np.count_nonzero(mask)}"
+                        )
 
             nep_cnts = np.zeros(60)
             nep_expo = np.zeros(60)

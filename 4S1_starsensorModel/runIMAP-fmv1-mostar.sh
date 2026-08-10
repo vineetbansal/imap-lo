@@ -31,7 +31,7 @@ else
     echo "output:" $output
     
     # note that output assumes no .csv .. star_ppm_105 for instance
-    $python makePointing_stars_V3-105.py -o $output -f ./catalog_Vt_7.csv -s $file -p $file_scpos -g $file_gtcontext -r 0.4 -m 5 -n 1. -xmax 360
+    $python makePointing_stars_V3-105.py -o $output -f ./catalog_Vt_7.csv -s $file -p $file_scpos -g $file_gtcontext -r 0.2 -m 3 -n 1. -xmax 360
   #  $python $pydir/star_cdf.py -s $file -k $file_hk -o $output 
 
 fi

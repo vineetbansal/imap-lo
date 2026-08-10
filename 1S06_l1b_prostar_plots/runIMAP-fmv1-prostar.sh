@@ -28,6 +28,6 @@ else
     echo "input hk:" $file_hk
     echo "output:" $output
     
-    $python $pydir/star_cdf.py -s $file -k $file_hk -o $output 
+    $python $pydir/star_cdf_V2.py -s $file -k $file_hk -o $output 
 
 fi

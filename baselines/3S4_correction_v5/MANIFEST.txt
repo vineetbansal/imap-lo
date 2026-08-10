@@ -1,0 +1,26 @@
+Baseline snapshot of 3S4_l1b_SputterBootstrap/correction_v5.py output.
+
+Generated: 2026-07-31T14:27:56-04:00
+Host cwd : 3S4_l1b_SputterBootstrap (./outdir/ redirected into this dir)
+
+Supersedes correction_v4.py as the comparison reference. v5 is NOT
+bit-identical to v4: the calibration constants now come from the
+geometric factor ancillary instead of hand-scaled literals, which moves
+fluxes <=2.1%, variances <=4.2%, and leaves counts/rates/exposure exact.
+The refactor itself was verified to contribute zero difference.
+
+== script and config (md5) ==
+6472c1501b996e27309d578000c57615  correction_v5.py
+20678d410b0a7bedd1d12b513c028c42  config_files/bootstrap_factors.csv
+400a6b25411da030e46d3339beaed11d  config_files/imap_lo_hydrogen-geometric-factor_v004.csv
+25afe9b74dfa21e4552bf7b4f82f7b33  config_files/sputter_factors.csv
+
+== inputs ==
+hydrogen: ../3S2_l1b_quickmaps/outdir/pivot_{75,90,105}/maps/
+oxygen  : ../3S3_l1b_Oxy_quickmaps/outdir/pivot_{75,90,105}/maps/
+c11e5d24dd80a69baa9ed056bea6c869  ../3S2_l1b_quickmaps/outdir/pivot_90/maps/map_cnts_esa5.csv
+a467179a61bade6060e908c102f10cb5  ../3S3_l1b_Oxy_quickmaps/outdir/pivot_90/maps/map_cnts_esa5.csv
+
+== compare ==
+python3 ../compare_correction_outputs.py \
+    ../baselines/3S4_correction_v5/outdir outdir

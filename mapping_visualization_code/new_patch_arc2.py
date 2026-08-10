@@ -140,7 +140,7 @@ def make_imap_lo_reference_points(rot, option=1):
 
 # --- Load data ---
 
-def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_label='Flux', plot_title='PPM = 90', opt_points=1, opt_ribbon=0):
+def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, label_colorbar='Flux', plot_title='PPM = 90', opt_points=1, opt_ribbon=0):
 
     data = pd.read_csv(file, header=0).values
     ny, nx = data.shape
@@ -186,20 +186,14 @@ def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_
     data_filled = np.copy(data_clipped)
     data_filled[np.isnan(data_clipped)] = vmin
 
-
-    lon2d, lat2d = np.meshgrid(lon_rot_inside, lat_rot)
-
-    df = pd.DataFrame(data_filled)
-    df.to_csv("data_filled.csv", index=False, header=False)
-
-#    pcm = ax.pcolormesh(lon_rot_inside, lat_rot, data_filled,  # no interpolation!
-#                        transform=ccrs.PlateCarree(),
-#                        cmap='viridis', norm=LogNorm(vmin=vmin, vmax=vmax), shading='auto')
-
-    pcm = ax.pcolormesh(lon_rot_inside, lat_rot, data_filled, vmin=vmin, vmax=vmax,  # no interpolation!
+    pcm = ax.pcolormesh(lon_rot_inside, lat_rot, data_filled,  # no interpolation!
                         transform=ccrs.PlateCarree(),
-                        cmap='jet',  shading='auto')
-#                        cmap='viridis',  shading='auto')
+                        cmap='turbo', vmin=vmin, vmax=vmax, shading='auto')
+# cmaps: 
+# inferno
+# viridiz
+# turbo
+# norm=LogNorm(vmin=vmin, vmax=vmax),
 
     lat_lines = np.linspace(-90, 90, 7)  # every ~30 deg
     for lat0 in lat_lines:
@@ -343,7 +337,7 @@ def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_
             xyz_rot_label = rot.apply(xyz)
             lat_plot = np.degrees(np.arcsin(xyz_rot_label[2]))
 
-            print('lon_label = ',lon_label)
+    #        print('lon_label = ',lon_label)
     #        lon_label = (-1.0*lon_label + 180) % 360 - 180
     #        print('lon_label (2) = ',lon_label)
             lon_plot = -lon_plot
@@ -367,7 +361,7 @@ def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_
                 lon_ref_rot,
                 lat_ref_rot,
                 marker='o',
-                markersize=1,
+                markersize=3,
                 color='white',
                 transform=ccrs.PlateCarree(),
                 zorder=5
@@ -380,7 +374,7 @@ def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_
                 f" {ref_label}",
                 transform=ccrs.PlateCarree(),
                 color='white',
-                fontsize=6,
+                fontsize=10,
                 ha='left',
                 va='center',
                 zorder=5
@@ -423,62 +417,13 @@ def make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, colorbar_
     #                       "Intensity (counts cm$^{-2}$ s$^{-1}$ sr$^{-1}$ keV$^{-1}$)")
 #    value = esa_energy[esa] * 1000.0
 #    s = f"{value:.2f}"
-#    cbar.set_label(colorbar_label)
+#    cbar.set_label(label)
 #    cbar.set_label(f"{label} [ECLIPJ2000] at ESA (eV) = {s}")
     plt.suptitle(plot_title)
 
-    plt.colorbar(pcm, ax=ax, orientation='horizontal', pad=0.05, label=colorbar_label)
+    plt.colorbar(pcm, ax=ax, orientation='horizontal', pad=0.05, label=label_colorbar)
     ax.set_global()
    # plt.show()
     plt.savefig(output, dpi=200, facecolor='w', edgecolor='w', orientation='portrait', format=None, transparent=False, bbox_inches=None, pad_inches=0.1)
+    plt.close(fig)
 
-
-file = "map_flux_esa7.csv"
-output= "map_flux_esa7.png"
-vmin = 10.0
-vmax = 250.0
-
-#lat_center = 5.0 
-#lon_center = -105.0
-label = 'Flux ESA 7'
-
-lat_center = 39
-lon_center = 221
-make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, opt_points=3, opt_ribbon=1,colorbar_label=label)
-
-
-file = "map_flux_esa6.csv"
-output= "map_flux_esa6.png"
-vmin = 30.0
-vmax = 500.0
-lat_center = 5.0 
-lon_center = -105.0
-label = 'Flux ESA 6'
-#make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, opt_ribbon=1,colorbar_label=label)
-
-file = "map_flux_esa5.csv"
-output= "map_flux_esa5.png"
-vmin = 40.0
-vmax = 600.0
-lat_center = 5.0 
-lon_center = -105.0
-label = 'Flux ESA 5'
-# make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, opt_ribbon=1,colorbar_label=label)
-
-file = "map_flux_esa4.csv"
-output= "map_flux_esa4.png"
-vmin = 100.0
-vmax = 1200.0
-lat_center = 5.0 
-lon_center = -105.0
-label = 'Flux ESA 4'
-# make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, opt_ribbon=1,colorbar_label=label)
-
-file = "map_flux_esa3.csv"
-output= "map_flux_esa3.png"
-vmin = 300.0
-vmax = 3500.0
-lat_center = 5.0 
-lon_center = -105.0
-label = 'Flux ESA 3'
-# make_imap_lo_map(file, lat_center, lon_center, vmin, vmax, output, opt_ribbon=1,colorbar_label=label)

@@ -59,7 +59,7 @@ if [[ -n "$mathk" ]]; then
     mathk="$file"
   fi
 
-  ./runIMAP-fmv1-autogt.sh "$file" "$match" "$mathk" 
+  ./runIMAP-fmv1-autogt_V5.sh "$file" "$match" "$mathk" 
   
 done
 

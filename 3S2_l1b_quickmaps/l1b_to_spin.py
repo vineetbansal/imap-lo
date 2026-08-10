@@ -109,6 +109,15 @@ def estimate_exposure_time(filename,YD, esa):
         start_arr.append(gd_start)
         end_arr.append(gd_end)
         dt = (gd_end - gd_start) / (7 * 60)
+
+        # May 28, 2026, NAS
+        # this dt should take into account full histogram cycles
+        # ncycle = int((gd_end - gd_start) / (tcycle)) + 1
+        # tcycle = tspin x 28 (close to 420 s)
+        # the +1 in ncycle is because we tend to include counts from the first histogram even if its actual start time is before the GD start time
+        # dt = ncycle x tcycle / (7 x 60 )
+        # we will have to correct this in future releases
+
         for i in range(1, 7 + 1):
             dist = dt * row[f'E-Step{i}']
             arr = np.zeros(60)
@@ -251,11 +260,19 @@ for file in data_dir.glob("*.cdf"):
             df_new['counts'] = nep_cnts
             df_new['ra'] = ra
             df_new['dec'] = dec
-            # df_new['expo'] = expo.values
             df_new['expo'] = nep_expo
             df_new['spin_ra'] = seq_ra
             df_new['spin_dec'] = seq_dec
-            
+
+            # Provenance columns for map manifest
+            df_new['date_yyyymmdd'] = yymmdd
+            df_new['yd'] = YD
+            df_new['repoint'] = basename.split("-repoint")[1].split("_")[0] if "-repoint" in basename else ""
+            df_new['pivot'] = int(pivot)
+            df_new['l1b_product'] = "histrates"
+            df_new['l1b_filename'] = basename
+            df_new['l1b_path'] = str(Path(file_path).resolve())
+
             df_new.to_csv(f"./outdir/{pivot_str}/daily/data_YD_{YD}_esa{ESA}.csv", index=False)
         
     except Exception as e:

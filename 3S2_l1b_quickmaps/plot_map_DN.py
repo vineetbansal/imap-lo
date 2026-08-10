@@ -14,6 +14,7 @@ import cartopy.crs as ccrs
 from scipy.spatial.transform import Rotation as R
 from matplotlib.colors import LogNorm
 import new_patch_arc2 as patch
+import new_patch_arc2_linear as pchlin
 
 PI = np.pi
 
@@ -65,7 +66,8 @@ label_map = {
         "fvto": "Variance Total",
         "runc": "Unc Rate",
         "rvar": "Variance Rate",
-        "flux": "Intensity (counts cm$^{-2}$ s$^{-1}$ sr$^{-1}$ keV$^{-1}$)"
+        "flux": "Intensity (counts cm$^{-2}$ s$^{-1}$ sr$^{-1}$ keV$^{-1}$)",
+        "cosalpha": "cos(alpha), alpha angle between Ram and Boresight"
     }
 
 # MAIN 
@@ -77,7 +79,7 @@ for pp in [75,90,105]:
     
     for esa in range(1,8):
         print(esa)
-        for tt in ["expo","rate","flux","cnts","fser","func","runc","fvar","fvto","rvar","stbg"]:
+        for tt in ["expo","rate","flux","cnts","fser","fvar","fvto","rvar","stbg","cosalpha"]:
                 filename = os.path.join(work_dir1, f"map_{tt}_esa{esa}.csv")
                 data = np.loadtxt(filename, delimiter=',', skiprows=1)
 
@@ -89,7 +91,11 @@ for pp in [75,90,105]:
                     vmax = np.max(data)
                     vmin = 1e-1
 
-                if tt in ["cnts", "rate", "flux", "fvar", "fvto", "fser", "stbg", "func", "runc", "rvar"]:
+                if tt =="cosalpha":
+                    vmax = np.max(data)
+                    vmin = -1.0*vmax
+
+                if tt in ["cnts", "rate", "flux", "fvar", "fvto", "fser", "stbg",  "rvar"]:
                     if esa==5:
                         vmax = np.max(data)
                         vmin = vmax * 1e-2
@@ -116,7 +122,10 @@ for pp in [75,90,105]:
                 label = label + f'[ECLIPJ2000] at ESA (eV) = {s}'
 #                print(label)
                 title = f'Pivot:{pp}'
-                patch.make_imap_lo_map(filename, lat_center, lon_center, vmin, vmax,output,label_colorbar=label,plot_title=title)
+                if tt =="cosalpha":
+                    pchlin.make_imap_lo_map(filename, lat_center, lon_center, vmin, vmax,output,label_colorbar=label,plot_title=title)
+                else:
+                    patch.make_imap_lo_map(filename, lat_center, lon_center, vmin, vmax,output,label_colorbar=label,plot_title=title)
 
 
 
