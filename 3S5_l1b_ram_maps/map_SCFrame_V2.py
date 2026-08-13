@@ -137,14 +137,25 @@ do_gl = {k: np.sqrt(do_gl[k]**2 + do_gf[k]**2) for k in do_gf}
 ## Get background Rate
 
 def get_brate(YD,esa):
-    
+
     backfile = './config_files/imap_lo_H_background.csv'
-    
+
     df = pd.read_csv(backfile,sep=',', names=['YD','start','end','bin_start','bin_end','Lo','esa1','esa2','esa3','esa4','esa5','esa6','esa7','type'])
-    
-    brate = df[(df['YD']==int(YD)) & (df['type']=='rate')][f'esa{esa}'].values[0]
-    
-    return brate
+
+    rows = df[(df['YD']==int(YD)) & (df['type']=='rate')][f'esa{esa}']
+    if rows.empty:
+        # This file is built by 1S04 from whatever days were in the window at
+        # the time, so widening selectDateRange.sh's START/END without rerunning
+        # 1S04 leaves the new days without a background rate.
+        covered = sorted(df[df['type']=='rate']['YD'].astype(int))
+        raise KeyError(
+            f"{backfile} has no background rate for {YD} "
+            f"(it covers {covered[0]}..{covered[-1]}). Rerun 1S04 for the new "
+            f"days, then re-concatenate imap_lo_H_background_*.csv and copy it "
+            f"back into config_files -- see sync_goodtimes.sh."
+        )
+
+    return rows.values[0]
 
 for pp in [75,90,105]:
     pivot_deg = pp + 4.0
@@ -177,6 +188,7 @@ for pp in [75,90,105]:
         h_fsel_map = np.zeros((30,60))
         h_fvto_map = np.zeros((30,60))
 
+        brate_expo_map = np.zeros((30,60))
         back_rate_map = np.zeros((30,60))
         back_rate_var = np.zeros((30,60))
         back_flux_map = np.zeros((30,60))
@@ -229,34 +241,53 @@ for pp in [75,90,105]:
             ps_dec = df['dec'].values
             counts = df['counts'].values
             expo = df['expo'].values
-            
+
+            brate_day = get_brate(YD, esa)
+
             for ia in range(0, 60):
-                    ra = ps_ra[ia]
-                    dec = ps_dec[ia]
-                    
-                    theta = 90.0 + dec
-                    
-                    imap = int(ra/deg)
-                    if (imap == 60):
-                        imap = 0
-                    jmap = int(theta/deg)
-                    if (jmap == 30):
-                        jmap = 0
-                    
                     # Bin center angle in radians
                     alpha = np.radians((ia + 0.5) * 6.0)
-    
+
                     # coord system with x = NEP, y = RAM, z = Sun
                     # look_x = np.sin(pivot)*np.cos(alpha)
                     look_y = np.sin(pivot)*np.sin(alpha)
                     # look_z = np.cos(pivot)
                     cosalpha = look_y
 
+                    # Drop the anti-ram bins here, before they are accumulated.
+                    # Masking the finished pixel map instead (which is what the
+                    # cosalpha_map overwrite below used to do) lets a pixel keep
+                    # counts from an anti-ram bin whenever a ram bin happens to
+                    # land in it afterwards.  lo_l2 masks the bins, via
+                    # `pset_valid_mask` in _accumulate_pointing.
+                    if cosalpha <= 0.0:
+                        continue
+
+                    ra = ps_ra[ia]
+                    dec = ps_dec[ia]
+
+                    theta = 90.0 + dec
+
+                    imap = int(ra/deg)
+                    if (imap == 60):
+                        imap = 0
+                    jmap = int(theta/deg)
+                    if (jmap == 30):
+                        jmap = 0
+
                     cosalpha_map[jmap, imap] = cosalpha
 
                     h_cnts_map[jmap,imap] += counts[ia]
                     exposure[jmap,imap] += expo[ia]
-                    
+
+                    # The background is a rate per day, so it accumulates
+                    # weighted by exposure and is divided by the total exposure
+                    # below -- the `bg_rate_exposure` accumulator of lo_l2.
+                    # Reading it once per map from whichever YD the file loop
+                    # happened to leave behind gave every pixel one arbitrary
+                    # day's background instead.
+                    brate_expo_map[jmap,imap] += brate_day * expo[ia]
+
         for imap in range(0, nra):
             for jmap in range(0,ncolat):
                 
@@ -268,10 +299,10 @@ for pp in [75,90,105]:
                 dgeu = dgu[esa]
                 dgel = dgl[esa]
                 
-                # Only look up background rate if this bin has exposure,
-                # so we don't depend on YD when there were no input files.
+                # Only derive a background rate where this bin has exposure, so
+                # we don't depend on YD when there were no input files.
                 if (expo > 0.0):
-                    brate = get_brate(YD, esa)
+                    brate = brate_expo_map[jmap,imap] / expo
                     back_rate_map[jmap,imap] = brate
                     back_rate_var[jmap,imap] = brate/expo
                     h_rate_map[jmap,imap] = h_cnts_map[jmap,imap] / expo
@@ -320,8 +351,9 @@ for pp in [75,90,105]:
                         h_fvto_map[jmap,imap] = h_fser_map[jmap,imap]**2
                         
         # ------------------------------------------------------------
-        # Final ram-side filter
-        # Keep only pixels where cosalpha > 0
+        # Final ram-side filter.  Now that the anti-ram bins are dropped before
+        # they are accumulated, every pixel carrying a value is already a ram
+        # pixel and this is a no-op; it is kept as a guard.
         # ------------------------------------------------------------
         ram_mask = cosalpha_map > 0.0
 

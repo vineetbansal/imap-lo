@@ -13,11 +13,11 @@ BKG_CONST = 0.0  # Constant background value to subtract if strictly necessary (
 E_u = 4.661
 
 # Nominal IMAP-Lo energy geometric geometric centers (eV)
-E_k = np.array([16.0, 30.0, 56.0, 106.0, 200.0, 404.0, 787.0], dtype=float)
+E_k = np.array([16.33, 30.47, 55.76, 106.26, 200.04, 404.96, 787.29], dtype=float)
 
 # Transmission scale factor polynomial coefficients M0...M5 from Table 1
 M_eta = np.array([
-    [1.01052, -0.047723, 0.030400, -0.0018170, 0.0023649, -0.00032519],
+    [1.01520, -0.047723, 0.030400, -0.0018170, 0.0023649, -0.00032519],
     [1.01420, -0.045778, 0.030061, -0.0020424, 0.0021796, -0.00029036],
     [1.01300, -0.045334, 0.030649, -0.0021426, 0.0021755, -0.00028690],
     [1.01090, -0.043671, 0.029741, -0.0014197, 0.0016756, -0.00022980],

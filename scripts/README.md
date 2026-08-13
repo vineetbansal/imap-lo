@@ -1,3 +1,100 @@
+# Comparing a quicklook map against `imap_processing`
+
+The runnable procedure — staging, the 3S5–3S8 chain, the CDF and the plot — is in
+[`../README.md`](../README.md). This file covers the comparison step it invokes:
+
+```bash
+python scripts/compare_to_l2.py --pivot 90
+```
+
+which exits non-zero on a mismatch, so the chain can be run under `set -e`.
+
+To iterate on 3S5 alone without re-staging:
+
+```bash
+cd 3S5_l1b_ram_maps && python l1b_to_spin.py && python map_SCFrame_V2.py && cd ..
+python scripts/compare_to_l2.py --pivot 90
+```
+
+## Verify counts and exposure, not intensity
+
+`ena_intensity` is `ena_count / exposure_factor / (G x E)`, and the median map
+pixel holds **2-3 counts** accumulated from **2-4 pointings**, the largest of
+which contributes about half its exposure. Poisson alone is 58-71% per pixel, so
+one event landing in the neighbouring pixel is a 30-50% intensity swing. An
+intensity diff cannot separate a real error from a single count moving over.
+
+`ena_count` and `exposure_factor` are additive and integral. Compare those first
+-- a mismatch in them points straight at the pointing or the bin that caused it,
+and once they agree the intensity follows from a <= 2% calibration difference.
+`compare_to_l2.py` reports all three, and passes or fails on the first two.
+
+A clean run looks like this:
+
+```
+pivot 90: quicklook 87 pointings, lo_l2 rules 87 pointings
+
+ESA |        ena_count         |     exposure_factor      |   ena_intensity
+    |  total   median     p90  |  total   median     p90  |  total   >20% of px
+ 1  |   0.00%    0.00%    0.00% |   0.00%    0.00%    0.00% |   0.00%    0.0%
+ ...
+PASS: ena_count and exposure_factor agree to within 1.0% on every ESA level
+```
+
+`compare_to_l2.py` reimplements `lo_l2`'s accumulation rather than calling it,
+because `lo_l2` needs the IMAP_DPS CK kernel and per-repoint goodtimes/bgrates
+CDFs, and this tree carries neither. It holds the spin axis common to both sides,
+so a PASS means the two agree **up to the attitude source** -- the quicklook
+reads `pointing_file.csv`, `lo_l2` samples the DPS CK. Closing that last
+difference needs the CK kernels in `input_SPICE/`.
+
+It is a fast pre-check on every pointing the quicklook mapped, not a substitute
+for diffing a real SDC product. Do that too, once the CDF is built -- see
+[`../README.md`](../README.md), which records where the two currently stand.
+
+## What the two pipelines have to agree on
+
+These were all sources of 20%-scale per-pixel intensity differences, and each is
+now handled the same way on both sides. They are worth re-checking whenever the
+inputs or the config files change.
+
+| | `lo_l2` | quicklook |
+|---|---|---|
+| Good-time mask | `ttj2000ns_to_met` | `epoch_to_met` in `l1b_to_spin.py` — a naive `epoch - 2010-01-01` is off by **-8.409 s** and drops 3.1% of cycles overall, up to 14% on a thin day |
+| Cone geometry | `goodtimes["pivot"]` | `goodtime_pivot()` — the **measured** 74.990 / 90.096 / 104.944, not the nominal 75/90/105 in `share_pivot.csv`, which is only for routing |
+| Input keying | by repointing (`_complete_pointings`) | by repointing — 2026-097 carries repoint00209 **and** repoint00211, and day-keyed filenames let one silently overwrite the other |
+| Missing pointings | dropped with a warning | `l1b_to_spin.py` collects them and exits non-zero; a pointing that the goodtimes product has no intervals for is an expected drop, anything else is an error |
+| Ram/anti-ram split | per spin-angle bin (`pset_valid_mask`) | per bin, before accumulation — masking finished pixels lets an anti-ram bin's counts survive in a pixel a ram bin also lands in |
+| Background rate | `bg_rate_exposure / exposure` | exposure-weighted accumulation in `map_SCFrame_V2.py` |
+
+Two known differences remain, both small and both deliberate:
+
+- **Geometric factors.** The quicklook's hardcoded `gf x 0.63529412` matches
+  `imap_lo_hydrogen-geometric-factor_v004.csv` `GF_Trpl_H` to <= 0.4% and the
+  energies to <= 2%, for a <= 2.1% intensity difference that is constant per ESA
+  level. Reading the ancillary directly would remove it.
+- **Systematic errors.** `fser`/`fseu`/`fsel` come from global scale factors
+  (1.574 / 0.367 x G); `lo_l2` uses the per-level `GF_Trpl_H_unc_plus/minus`
+  columns. Different by construction.
+
+## Pitfalls in the input staging
+
+- `generate_pointing_file.py` treats pset versions >= v900 as synthetic, because a
+  v997 product on 2026-001 gave an attitude 51.9 deg off. Some real days have
+  **only** an out-of-band product: 2026-017 and 2026-018 carry a v997 whose axis
+  is identical to the archived v001. Those are now recovered, gated on the spin
+  axis landing within 10 deg of the Sun (real days sit at 3.3-4.0 deg). Losing
+  them cost two whole pointings, about half of the pivot-90 map's exposure
+  deficit.
+- Run `generate_pointing_file.py` against a pset directory covering **every day
+  you intend to map**. `input_l1c/archive/` and `input_l1c/hide/` are not
+  searched; a day whose only pset has been moved there gets no row, and
+  `l1b_to_spin.py` will then fail on it.
+- `share_pivot.csv` has `No Data` rows; parse `Pivot` with `pd.to_numeric(...,
+  errors="coerce")` rather than `astype(float)`.
+
+---
+
 # IMAP Lo Good-Times Detection Algorithm
 
 Implemented in `pipeline.genererate_goodtimes`.
