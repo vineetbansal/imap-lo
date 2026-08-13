@@ -58,4 +58,16 @@ Remove all existing files downloaded using imap-data-access and redownload - thi
 
 10. Run steps 3S5-3S8 (build maps)
 
-   ./update_3s5_3s8.sh
+    ./update_3s5_3s8.sh
+
+11. Generate a CDF from a map directory (plottable in CAVA or comparable with an SDC map using #12 below).
+
+    python scripts/maps_to_l2_cdf.py --maps-dir 3S5_l1b_ram_maps/outdir/pivot_90/maps --template scripts/template.cdf --out-dir map_cdf/
+
+12. Plot diff plots against official SDC maps.
+
+    Place map CDFS from SDC pipeline (will be soon obtainable through imap-data-access as an l2 product) in a folder, and run comparison plots
+    against quicklook maps (map CDFs are lined by by name).
+
+    python scripts/plot_l2_map.py /path/to/sdc/map/cdfs ./map_cdf --output map_compare/
+    
