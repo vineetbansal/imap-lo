@@ -14,11 +14,12 @@ if [[ -z "$2" ]]; then
 fi
 
 # Go to the root path where data will be downloaded to
-cd /Users/nschwadron/Computer/IMAP_Lo/quickpipeline
+source setup.sh 
+cd $IMAP_DATA_DIR
 
-# Get rid of any old Lo L1B products before starting
-rm -rf data/imap/lo/l1a/*
-rm -rf data/imap/lo/l1b/*
+# Get rid f any old data (commented out 8/14/2027)
+# rm -rf imap/lo/l1a/*
+# rm -rf imap/lo/l1b/*
 
 # Fetch the latest DE, NHK, and HISTRATES products from the SDC
 # Annoying thta you can't do a query-and-download in one step...
@@ -72,6 +73,13 @@ for file in $FILES; do
 done
 echo "got l1b prostar"
 
+echo "fetching l1b goodtimes"
+FILES=`imap-data-access query --instrument lo --data-level l1b --descriptor goodtimes --version latest --start-date $1 --end-date $2 | awk '/imap_/ {print $17}'`
+for file in $FILES; do
+    imap-data-access download $file
+done
+echo "got l1b goodtimes"
+
 echo "fetching l1c pset"
 FILES=`imap-data-access query --instrument lo --data-level l1c --descriptor pset --version latest --start-date $1 --end-date $2 | awk '/imap_/ {print $17}'`
 for file in $FILES; do
@@ -79,23 +87,23 @@ for file in $FILES; do
 done
 echo "got l1c pset"
 
-
-
 # Clear out the old data in the Lo team's auto-gt tool
-#rm -rf data/imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input/*
-#rm -rf data/imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input_de/*
-#rm -rf data/imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/nhk/*
+#rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input/*
+#rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input_de/*
+#rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/nhk/*
+
+cd ..
 
 # Move the new data to the location of the Lo team's auto-gt tool
 echo "copying files into new homes"
-cp data/imap/lo/l1a/*/*/*_de* ./input_l1a_de
-cp data/imap/lo/l1b/*/*/*_histrates* ./input_l1b_histrates
-cp data/imap/lo/l1b/*/*/*_monitorrates* ./input_l1b_monitorrates
-cp data/imap/lo/l1b/*/*/*_de* ./input_de
-cp data/imap/lo/l1b/*/*/*_nhk* ./input_hk
-cp data/imap/lo/l1b/*/*/*_shk* ./input_shk
-cp data/imap/lo/l1b/*/*/*_prostar* ./input_prostar
-cp data/imap/lo/l1c/*/*/*_pset* ./input_l1c
+cp $IMAP_DATA_DIR/imap/lo/l1a/*/*/*_de* ./input_l1a_de
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_histrates* ./input_l1b_histrates
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_monitorrates* ./input_l1b_monitorrates
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_de* ./input_de
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_nhk* ./input_hk
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_shk* ./input_shk
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_prostar* ./input_prostar
+cp $IMAP_DATA_DIR/imap/lo/l1c/*/*/*_pset* ./input_l1c
 echo "done copying over"
 
 echo "cleaning up homes"

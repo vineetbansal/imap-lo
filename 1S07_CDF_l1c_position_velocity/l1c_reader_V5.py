@@ -20,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from spacepy import pycdf
 import spiceypy as spice
+import requests
+import re
 
 TOF3_L = [ 11.0, 7.0, 3.5, 0.0 ]
 TOF3_H = [15.0, 11.0, 7.0, 3.5 ]
@@ -49,11 +51,18 @@ TT2000_TO_UNIX_SECONDS = 946728000.0 - 64.184  # = 946727935.816
 PI = np.pi
 
 # cutoff_acsfixed = datetime(2026, 7, 8, tzinfo=timezone.utc)
-cutoff_acsfixed = datetime(2026, 7, 8)
+cutoff_acsfixed = datetime(2025, 8, 1)
 # when we updated the ACS and made sure the frame was right
 
 eps = np.deg2rad(23.4392911)
 small = 1.0e-10
+
+AU_KM = 149597870.7
+
+# Approximate Earth -> Sun-Earth L1 distance
+L1_DISTANCE_KM = 1.5e6
+
+URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
 
 rot_ecl_to_eq = np.array([
     [1, 0, 0],
@@ -65,7 +74,7 @@ cols = ['shcoarse', 'absent', 'timestamp', 'egy', 'mode', 'TOF0', 'TOF1', 'TOF2'
 
 def print_coord(fle, date, spin_axis, sc_lon, sc_lat, sc_lon2, sc_lat2, sc_lon_ephem, sc_lat_ephem, spin_lon, spin_lat, spin_lon_eq, spin_lat_eq, sc_position, sc_velocity, spin_axis_angle):
         
-    print(f"date, spin_axis_angle, sc_lon[V], sc_lat[V], sc_lon[E], sc_lat[E], sc_lon[EPH], sc_lat[EPH], spin_lon, spin_lat, spin_lon_eq_J2000, spin_lat_eq_J2000, spin_axis, sc_position, sc_velocity", file=fle)
+    print(f"date, spin_axis_angle, sc_lon[V], sc_lat[V], sc_lon[IMAP ec_j2000], sc_lat[IMAP ec_j2000], sc_lon[EPH], sc_lat[EPH], spin_lon, spin_lat, spin_lon_eq_J2000, spin_lat_eq_J2000, spin_axis, sc_position, sc_velocity", file=fle)
     print( 
         f"{date}, {spin_axis_angle}, {sc_lon}, {sc_lat}, {sc_lon2}, {sc_lat2}, {sc_lon_ephem}, {sc_lat_ephem}, {spin_lon}, {spin_lat}, {spin_lon_eq}, {spin_lat_eq}, {spin_axis}, {sc_position}, {sc_velocity}", file=fle
         )
@@ -117,13 +126,13 @@ def to_unix_seconds(epoch):
 
 # new version
 
-def earth_heliocentric_coords(epoch):
+def earth_heliocentric_coords(epoch, return_re=False):
     """
-    Approximate heliocentric ecliptic coordinates of Earth in the
-    fixed J2000 ecliptic frame.
+    Approximate heliocentric ecliptic coordinates of the Earth-Moon
+    barycenter in the fixed J2000 ecliptic frame.
 
-    This uses the JPL approximate planetary elements for the
-    Earth-Moon barycenter, valid from 1800 to 2050.
+    This uses the JPL approximate planetary elements, valid from
+    1800 to 2050.
 
     The output frame corresponds to:
         SPICE frame: ECLIPJ2000
@@ -137,12 +146,21 @@ def earth_heliocentric_coords(epoch):
     epoch
         Input accepted by to_unix_seconds().
 
+    return_re : bool, optional
+        If True, also return heliocentric radial distance re in AU.
+        Default is False.
+
     Returns
     -------
     lon_deg : float
         Heliocentric ecliptic longitude in ECLIPJ2000 [0, 360).
+
     lat_deg : float
         Heliocentric ecliptic latitude in ECLIPJ2000 [-90, 90].
+
+    re : float, optional
+        Heliocentric radial distance [AU].
+        Returned only if return_re=True.
     """
 
     epoch_time = to_unix_seconds(epoch)
@@ -181,24 +199,13 @@ def earth_heliocentric_coords(epoch):
 
     # Julian centuries since J2000.0.
     #
-    # Strictly, the JPL formula uses TDB. Using UTC here introduces
-    # a negligible positional error for this low-precision routine.
+    # Strictly, JPL uses TDB. Using UTC here introduces only a
+    # negligible error for this approximate calculation.
     T = (JD - 2451545.0) / 36525.0
 
     # ------------------------------------------------------------
-    # JPL approximate orbital elements for the Earth-Moon barycenter
-    #
-    # Elements and rates are referred to the mean ecliptic and
-    # equinox of J2000.
-    #
-    # a       semi-major axis [AU]
-    # e       eccentricity
-    # inc     inclination [deg]
-    # L       mean longitude [deg]
-    # varpi   longitude of perihelion [deg]
-    # Omega   longitude of ascending node [deg]
+    # JPL approximate orbital elements for Earth-Moon barycenter
     # ------------------------------------------------------------
-
     a = 1.00000261 + 0.00000562 * T
     e = 0.01671123 - 0.00004392 * T
     inc_deg = -0.00001531 - 0.01294668 * T
@@ -214,16 +221,10 @@ def earth_heliocentric_coords(epoch):
     M_deg = (M_deg + 180.0) % 360.0 - 180.0
 
     # ------------------------------------------------------------
-    # Solve Kepler's equation:
-    #
-    #     M = E - e sin(E)
-    #
-    # All calculations below use radians.
+    # Solve Kepler's equation
     # ------------------------------------------------------------
-
     M = math.radians(M_deg)
 
-    # Good initial approximation.
     E = M + e * math.sin(M)
 
     for _ in range(20):
@@ -237,16 +238,21 @@ def earth_heliocentric_coords(epoch):
             break
 
     # ------------------------------------------------------------
-    # Position in the orbital plane
+    # Heliocentric distance [AU]
+    #
+    # r = a (1 - e cos E)
     # ------------------------------------------------------------
+    re = a * (1.0 - e * math.cos(E))
 
+    # ------------------------------------------------------------
+    # Position in orbital plane
+    # ------------------------------------------------------------
     x_orbit = a * (math.cos(E) - e)
     y_orbit = a * math.sqrt(1.0 - e * e) * math.sin(E)
 
     # ------------------------------------------------------------
-    # Rotate into the fixed J2000 ecliptic frame
+    # Rotate into fixed J2000 ecliptic frame
     # ------------------------------------------------------------
-
     inc = math.radians(inc_deg)
     Omega = math.radians(Omega_deg)
     omega = math.radians(omega_deg)
@@ -280,13 +286,15 @@ def earth_heliocentric_coords(epoch):
     )
 
     # ------------------------------------------------------------
-    # Cartesian to spherical coordinates
+    # Cartesian to spherical
     # ------------------------------------------------------------
-
     rho_xy = math.hypot(x, y)
 
     lon_deg = math.degrees(math.atan2(y, x)) % 360.0
     lat_deg = math.degrees(math.atan2(z, rho_xy))
+
+    if return_re:
+        return lon_deg, lat_deg, re
 
     return lon_deg, lat_deg
 
@@ -360,6 +368,236 @@ def earth_ecliptic_longitude(epoch):
 
     return lon_deg
 
+def imap_heliocentric_coords_spice(epoch):
+    """
+    IMAP heliocentric position from SPICE in ECLIPJ2000.
+
+    Parameters
+    ----------
+    epoch : datetime
+        UTC datetime.
+
+    Returns
+    -------
+    lon_deg : float
+        Heliocentric ecliptic longitude [deg, 0-360).
+
+    lat_deg : float
+        Heliocentric ecliptic latitude [deg].
+
+    r_au : float
+        Heliocentric distance [AU].
+
+    pos_au : ndarray
+        ECLIPJ2000 heliocentric position [AU].
+
+    vel_au_day : ndarray
+        ECLIPJ2000 heliocentric velocity [AU/day].
+    """
+
+    # Make sure UTC is explicit
+    if epoch.tzinfo is None:
+        epoch = epoch.replace(tzinfo=timezone.utc)
+
+    utc_time = epoch.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+    # Convert UTC -> SPICE ephemeris time
+    et = spice.str2et(utc_time)
+
+    # IMAP relative to Sun, geometric, in ECLIPJ2000
+    state, lt = spice.spkezr(
+        "IMAP",
+        et,
+        "ECLIPJ2000",
+        "NONE",
+        "SUN"
+    )
+
+    # SPICE gives km and km/s
+    pos_km = np.array(state[:3])
+    vel_km_s = np.array(state[3:])
+
+    AU_KM = 149597870.700
+
+    pos_au = pos_km / AU_KM
+    vel_au_day = vel_km_s * 86400.0 / AU_KM
+
+    x, y, z = pos_au
+
+    r_au = np.linalg.norm(pos_au)
+
+    lon_deg = np.degrees(np.arctan2(y, x)) % 360.0
+    lat_deg = np.degrees(
+        np.arctan2(z, np.hypot(x, y))
+    )
+
+    return lon_deg, lat_deg, r_au, pos_au, vel_au_day
+
+
+def l1_heliocentric_coords(epoch):
+    """
+    Approximate nominal Sun-Earth L1 position from Earth's
+    heliocentric position.
+
+    Assumes L1 lies along the Sun-Earth line, approximately
+    1.50 million km sunward of Earth.
+
+    Returns
+    -------
+    lon_deg : float
+        Heliocentric ECLIPJ2000 longitude [deg]
+    lat_deg : float
+        Heliocentric ECLIPJ2000 latitude [deg]
+    r_au : float
+        Heliocentric radial distance of L1 [AU]
+    position_au : ndarray, shape (3,)
+        Cartesian heliocentric L1 position in ECLIPJ2000 [AU]
+    """
+
+    # Earth position
+    lon_e, lat_e, r_e = earth_heliocentric_coords(epoch, return_re=True)
+
+    lon_rad = np.deg2rad(lon_e)
+    lat_rad = np.deg2rad(lat_e)
+
+    earth_pos = np.array([
+        np.cos(lat_rad) * np.cos(lon_rad),
+        np.cos(lat_rad) * np.sin(lon_rad),
+        np.sin(lat_rad)
+    ])
+
+    # Distance from Earth toward Sun, in AU
+    d_l1_au = L1_DISTANCE_KM / AU_KM
+
+    # Unit vector from Sun toward Earth
+    earth_hat = earth_pos / np.linalg.norm(earth_pos)
+
+    # Move inward along Sun-Earth line
+    r_l1 = r_e - d_l1_au
+    l1_pos = r_l1 * earth_hat
+
+    x, y, z = l1_pos
+
+    rho_xy = np.hypot(x, y)
+
+    lon_l1 = np.degrees(np.arctan2(y, x)) % 360.0
+    lat_l1 = np.degrees(np.arctan2(z, rho_xy))
+
+    return lon_l1, lat_l1, r_l1, l1_pos
+
+def imap_heliocentric_coords_horizons(epoch):
+    """
+    Query JPL Horizons for IMAP heliocentric ECLIPJ2000 position.
+
+    Returns
+    -------
+    lon_deg : float
+    lat_deg : float
+    r_au : float
+    pos_au : ndarray
+    """
+
+    url = URL
+
+    # Make sure the time is interpreted as UTC
+    if epoch.tzinfo is None:
+        epoch = epoch.replace(tzinfo=timezone.utc)
+
+    # Keep seconds -- useful for your avg_epoch
+    utc_time = epoch.strftime("%Y-%m-%d %H:%M:%S")
+
+    params = {
+        "format": "text",
+
+        # IMAP
+        "COMMAND": "'-43'",
+
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'",
+        "EPHEM_TYPE": "'VECTORS'",
+
+        # Sun-centered
+        "CENTER": "'500@10'",
+
+        # Ask for exactly one epoch
+        "TLIST": f"'{utc_time}'",
+        "TLIST_TYPE": "'CAL'",
+        "TIME_TYPE": "'UT'",
+
+        # This produces Ecliptic of J2000.0
+        "REF_PLANE": "'ECLIPTIC'",
+        "REF_SYSTEM": "'ICRF'",
+
+        # Geometric position
+        "VEC_CORR": "'NONE'",
+
+        # AU and days
+        "OUT_UNITS": "'AU-D'",
+        "VEC_TABLE": "'2'",
+
+        # Keep time precision
+        "TIME_DIGITS": "'SECONDS'",
+    }
+
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+
+    text = response.text
+
+    # ------------------------------------------------------------
+    # VERY useful diagnostic
+    # ------------------------------------------------------------
+    if "$$SOE" not in text or "$$EOE" not in text:
+        print("\n----- HORIZONS RESPONSE -----")
+        print(text)
+        print("----- END HORIZONS RESPONSE -----\n")
+
+        raise RuntimeError(
+            "Could not find Horizons ephemeris output."
+        )
+
+    # ------------------------------------------------------------
+    # Pull out ephemeris block
+    # ------------------------------------------------------------
+    i0 = text.find("$$SOE")
+    i1 = text.find("$$EOE")
+
+    block = text[i0:i1]
+
+    # ------------------------------------------------------------
+    # Extract X,Y,Z
+    # ------------------------------------------------------------
+    match = re.search(
+        r"X\s*=\s*([+-]?\d+\.\d+E[+-]\d+)\s+"
+        r"Y\s*=\s*([+-]?\d+\.\d+E[+-]\d+)\s+"
+        r"Z\s*=\s*([+-]?\d+\.\d+E[+-]\d+)",
+        block
+    )
+
+    if match is None:
+        print(block)
+        raise RuntimeError("Could not parse Horizons X,Y,Z.")
+
+    x = float(match.group(1))
+    y = float(match.group(2))
+    z = float(match.group(3))
+
+    pos_au = np.array([x, y, z])
+
+    # ------------------------------------------------------------
+    # Convert ECLIPJ2000 Cartesian -> lon, lat, r
+    # ------------------------------------------------------------
+    r_au = np.linalg.norm(pos_au)
+
+    lon_deg = np.degrees(
+        np.arctan2(y, x)
+    ) % 360.0
+
+    lat_deg = np.degrees(
+        np.arctan2(z, np.hypot(x, y))
+    )
+
+    return lon_deg, lat_deg, r_au, pos_au
 
 def doy_fraction(t):
     start = datetime(t.year, 1, 1)
@@ -809,7 +1047,10 @@ sdoy1 = f"{doy1:03d}"
 date1 = f"{yr1}{sdoy1}"
 
 # Average epoch time
-avg_epoch = epoch[0] + (epoch[-1] - epoch[0]) / 2.0
+#avg_epoch = epoch[0] + (epoch[-1] - epoch[0]) / 2.0
+epoch0 = epoch[0]
+avg_epoch = epoch0 + timedelta(hours=12)
+
 
 # If you want the exact mean of all samples instead:
 # import numpy as np
@@ -819,7 +1060,7 @@ avg_epoch = epoch[0] + (epoch[-1] - epoch[0]) / 2.0
 utc_time = avg_epoch.strftime("%Y-%m-%d %H:%M:%S")
 et = spice.str2et(utc_time)
 
-print("1S07 Average epoch =", avg_epoch)
+print("1S07 Average epoch =", epoch[0],  avg_epoch,)
 print("1S07 UTC time      =", utc_time)
 print("1S017 Date1         =", date1)
 
@@ -855,12 +1096,17 @@ print(f"1S07 Time since J2000 (et): {et} seconds")
 # lon_sc2, lat_sc2 = earth_heliocentric_coords(epoch[0])
 #lat_sc3 = 0.0
 # lon_sc3 = earth_ecliptic_longitude(avg_epoch )
-lon_sc3, lat_sc3 = earth_heliocentric_coords(avg_epoch)
 
-# print("lons = ", lon_sc2, lon_sc3)
+lon_sc3, lat_sc3 = earth_heliocentric_coords(avg_epoch)
+lon_l1_ecJ2000, lat_l1_ecJ2000, r_l1, l1_pos = l1_heliocentric_coords(avg_epoch)
+
+lon_jpl, lat_jpl, r_jpl, pos_jpl = \
+    imap_heliocentric_coords_horizons(avg_epoch)
 
 spin_axis, lat_spin, lon_spin, lat_sc, lon_sc, diag =\
-     compute_spin_axis_from_cdf_gen(cdf, lat_sc3, lon_sc3)
+     compute_spin_axis_from_cdf_gen(cdf, lat_jpl, lon_jpl)
+
+print("lons EC J2000 (L1, IMAP JPL NAIF, SC Eph)= ", lon_l1_ecJ2000, lon_jpl, lon_sc )
 
 lon_spin_eq, lat_spin_eq =\
     convert_spin_to_J2000_eq(avg_epoch, lon_spin, lat_spin)
@@ -891,7 +1137,7 @@ else:
 with open(f'output/imap_lo_position_{date1}.csv', 'w') as fle:
 
     print_coord(fle, date1, spin_axis, 
-                lon_sc, lat_sc, lon_sc3, lat_sc3, 
+                lon_sc, lat_sc, lon_jpl, lat_jpl, 
                 lon_ephem, lat_ephem, lon_spin, 
                 lat_spin, lon_spin_eq, lat_spin_eq,
                 diag["sc_position"], diag["sc_velocity"], diag["spin_angle"])

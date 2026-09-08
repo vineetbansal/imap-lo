@@ -194,7 +194,7 @@ for esa in range(1,8):
     x3 = TOF3[use_event]
     ncheck = len(x0)
     if (ncheck < minEvents): 
-        print("1S12 spinbin Ideas Failed number of events after valid selection = ", ncheck, "esa = ", esa)
+        print("1S15 spinbin Ideas Failed number of events after valid selection = ", ncheck, "esa = ", esa)
         continue
 
 #    print("number of valid TOF3 = ", nValid3)
