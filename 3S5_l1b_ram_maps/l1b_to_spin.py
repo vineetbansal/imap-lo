@@ -176,13 +176,21 @@ def estimate_exposure_time(filename,YD, esa, repoint=None):
 def goodtime_pivot(filename, YD, repoint=None):
     """Read the pivot angle the L1B goodtimes product recorded for this pointing.
 
-    share_pivot.csv carries the nominal pointing group (75/90/105), which is the
-    right thing to route the daily files by but the wrong thing to build the cone
-    geometry from: the measured pivot in the goodtimes product is 74.990 /
-    90.096 / 104.944, and imap_processing's lo_l2 uses that measured value.
-    Feeding it 90.000 instead of 90.096 moves the boresight ring by a tenth of a
-    degree, which flips bins across pixel boundaries and shifts the intensity of
-    ~11% of pixels by more than 20%.
+    This is what both the cone geometry and the pivot_{75,90,105} routing are
+    built from.  The measured pivot is 74.990 / 90.096 / 104.944, and
+    imap_processing's lo_l2 uses that measured value.  Feeding it 90.000 instead
+    of 90.096 moves the boresight ring by a tenth of a degree, which flips bins
+    across pixel boundaries and shifts the intensity of ~11% of pixels by more
+    than 20%.
+
+    share_pivot.csv carries the nominal pointing group as *planned*, one row per
+    day, and the plan is not always what flew: repoint00128 (2026-016) and
+    repoint00341 (2026-227) both flew at 90.096 on days the plan calls 75 and
+    105.  A daily calendar cannot express a pivot change that lands on a mid-day
+    repointing, so routing by it filed repoint00128's daily files under pivot_75
+    and dropped that whole pointing from the pivot_90 map -- silently, since a
+    misrouted day is not a failed one.  Routing by the measured value instead
+    keeps the geometry and the destination directory from disagreeing.
     """
     df = select_goodtimes(filename, YD, repoint)
 
@@ -233,9 +241,8 @@ for file in data_dir.glob("*.cdf"):
         
         pointing_file = './config_files/pointing_file.csv'
         goodtime_file = './config_files/imap_lo_goodtimes_2.csv'
-        pivot_csv = "./config_files/share_pivot.csv"
         
-        for f in [pointing_file, goodtime_file, pivot_csv]:
+        for f in [pointing_file, goodtime_file]:
             if not os.path.exists(f):
                 print(f"File not found: {f}")
                 sys.exit(1)
@@ -258,17 +265,13 @@ for file in data_dir.glob("*.cdf"):
         ## Ask the goodtimes product first: a pointing with no intervals is one
         ## lo_l2 drops too, so it must not be reported as a lost pointing below.
         ##
-        ## share_pivot.csv gives the nominal pointing group, which is what the
-        ## daily files are routed by.  The geometry uses the pivot the L1B
-        ## goodtimes product measured, which is what lo_l2 uses -- see
-        ## goodtime_pivot().
+        ## The cone geometry and the pivot_{75,90,105} group the daily file is
+        ## written to both come from the pivot the L1B goodtimes product
+        ## measured, which is what lo_l2 uses -- see goodtime_pivot().  The
+        ## measured values are 74.990 / 90.096 / 104.944, so rounding names the
+        ## group without consulting the planning calendar.
         PIVOT_ANGLE = goodtime_pivot(goodtime_file, int_YD, repoint)
-
-        df_pivot = pd.read_csv(pivot_csv)
-        df_pp=df_pivot[df_pivot['DOY']==int_YD]
-        if df_pp.empty:
-            raise ValueError(f"No matching rows found for {YD} in {pivot_csv}")
-        pivot = df_pp['Pivot'].astype(float).values[0]
+        pivot = round(PIVOT_ANGLE)
 
         ## Grab spin axis information from the pointing file
 
@@ -279,7 +282,7 @@ for file in data_dir.glob("*.cdf"):
         s_ra = df_p['spin_ra'].astype(float).values[0]
         s_dec = df_p['spin_dec'].astype(float).values[0]
 
-        pivot_str = f"pivot_{int(pivot)}"
+        pivot_str = f"pivot_{pivot}"
 
         ra,dec = create_ra_dec(s_ra,s_dec,PIVOT_ANGLE)
         
@@ -345,7 +348,7 @@ for file in data_dir.glob("*.cdf"):
             df_new['date_yyyymmdd'] = yymmdd
             df_new['yd'] = YD
             df_new['repoint'] = repoint if repoint is not None else ""
-            df_new['pivot'] = int(pivot)
+            df_new['pivot'] = pivot
             df_new['pivot_measured'] = PIVOT_ANGLE
             df_new['l1b_product'] = "histrates"
             df_new['l1b_filename'] = basename
