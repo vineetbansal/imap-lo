@@ -29,6 +29,13 @@ file appears to hold an instantaneous value at the day boundary instead -- the
 two differ by a stable ~0.6 deg, with this file's value sitting ~60% of the way
 toward the next day's entry.  That is a convention difference, not an error.
 
+Writing
+-------
+The output is merged, not replaced: only the days recomputed from the psets on
+hand are (re)written, and every other YYYYDDD already in the file is carried
+over verbatim.  So a run over a single day's pset updates that day and leaves
+the rest of the file alone.
+
 Usage
 -----
     python scripts/generate_pointing_file.py \\
@@ -192,6 +199,50 @@ def pset_files_by_day(pset_dir: Path, allow_test: bool = False) -> dict[int, tup
     return chosen
 
 
+HEADER = "YYYYDDD,SPINRA,SPINDEC"
+
+
+def read_existing(path: Path) -> dict[int, str]:
+    """Map YYYYDDD -> the file's own line for it, so untouched days survive verbatim.
+
+    Anything whose first field is not an integer day (the header, blank lines,
+    comments) is dropped rather than guessed at; the header is rewritten below.
+    """
+    if not path.exists():
+        return {}
+    rows: dict[int, str] = {}
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            yd = int(line.split(",", 1)[0])
+        except ValueError:
+            continue
+        rows[yd] = line
+    return rows
+
+
+def merge_into(path: Path, rows: list[tuple[int, float, float]]) -> list[int]:
+    """Write *rows* into *path*, preserving existing days that *rows* does not cover.
+
+    The file is rewritten in full -- there is no way to splice a line into a CSV
+    in place -- but every day not recomputed keeps the exact text it had.
+    Returns the days carried over.
+    """
+    merged = read_existing(path)
+    kept = sorted(set(merged) - {yd for yd, _, _ in rows})
+    for yd, ra, dec in rows:
+        merged[yd] = f"{yd},{ra:.6f},{dec:.6f}"
+
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w") as fh:
+        fh.write(HEADER + "\n")
+        for yd in sorted(merged):
+            fh.write(merged[yd] + "\n")
+    os.replace(tmp, path)
+    return kept
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -235,12 +286,10 @@ def main() -> None:
         rows.append((yd, ra, dec))
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w") as fh:
-        fh.write("YYYYDDD,SPINRA,SPINDEC\n")
-        for yd, ra, dec in rows:
-            fh.write(f"{yd},{ra:.6f},{dec:.6f}\n")
+    kept = merge_into(args.out, rows)
 
-    print(f"{args.out}: {len(rows)} days [{rows[0][0]}..{rows[-1][0]}] frame={args.frame}")
+    print(f"{args.out}: {len(rows)} days written [{rows[0][0]}..{rows[-1][0]}], "
+          f"{len(kept)} kept from the existing file, frame={args.frame}")
     for yd, name, angle in recovered:
         print(f"  from out-of-band product (no in-band pset for this day, "
               f"axis {angle:.2f} deg from Sun): {yd} {name}")

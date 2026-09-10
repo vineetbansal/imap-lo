@@ -29,4 +29,4 @@ cd 3S8_l1b_cg_corrected
 cd .. 
 
 
-./update_sync.sh
+# ./update_sync.sh
