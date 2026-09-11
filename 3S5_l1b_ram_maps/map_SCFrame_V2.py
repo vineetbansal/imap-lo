@@ -30,25 +30,29 @@ nmap = nra*ncolat*nesa
 
 eff_h = 1.0
 
+# Centre energies (keV) and hydrogen geometric factors of ESA steps 1-7 are
+# Cntr_E and GF_Trpl_H of the HiRes (esa_mode 0) rows of the SDC ancillary
+# imap_lo_hydrogen-geometric-factor_v004.csv, so intensities match the SDC L2
+# maps. Step 8 is not in the ancillary and keeps its old values.
 esa_energy = {
-    1: 0.016,
-    2: 0.030,
-    3: 0.056,
-    4: 0.106,
-    5: 0.200,
-    6: 0.405,
-    7: 0.787,
+    1: 0.01633,
+    2: 0.03047,
+    3: 0.05576,
+    4: 0.10626,
+    5: 0.20004,
+    6: 0.40496,
+    7: 0.78729,
     8: 1.821
 }
 
 gf = {
-    1: 7.0e-5,
-    2: 7.9e-5,
-    3: 9.7e-5,
-    4: 11.2e-5,
-    5: 14.0e-5,
-    6: 17.7e-5,
-    7: 22.5e-5,
+    1: 4.45e-5,
+    2: 5.02e-5,
+    3: 6.16e-5,
+    4: 7.12e-5,
+    5: 8.89e-5,
+    6: 11.2e-5,
+    7: 14.3e-5,
     8: 6.721e-5
 }
 
@@ -65,7 +69,8 @@ dg = {
 
 scale = 0.63529412
 
-gf = {k: v * scale for k, v in gf.items()}
+# The v004 geometric factors already carry this scale; only step 8 needs it
+gf[8] = gf[8] * scale
 
 dg = {k: v * scale for k, v in dg.items()}
 

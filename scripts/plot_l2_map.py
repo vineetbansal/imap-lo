@@ -90,6 +90,11 @@ overlap there is nothing to compare. Note that this is an overlap in sky, not
 in time: the maps are already accumulated over their pointing sets by the time
 they reach this script, so a comparison over only the pointings both runs used
 is not something that can be recovered here -- it has to be built that way.
+What can be done is to leave out the bins where the two runs' exposures
+disagree, which are the bins a pointing set only one of them has swept across:
+a run with an extra day of pointings shows up as a band of large differences
+along the edge of the coverage otherwise. --exposure-tolerance sets how far
+apart the exposures can be, 1% by default.
 Each pair gets one figure, carrying a row for every variable asked for and each
 comparison of it: the two runs, then the comparisons --compare asked for. Each
 row is one quantity across every energy step, and carries its own colour bar --
@@ -185,6 +190,17 @@ def percentile(value):
         raise argparse.ArgumentTypeError(
             f"{value} is not a percentile between 0 and 100"
         )
+    return number
+
+
+def tolerance(value):
+    """An --exposure-tolerance argument: a percentage no smaller than zero."""
+    try:
+        number = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not a percentage") from None
+    if number < 0:
+        raise argparse.ArgumentTypeError(f"{value} is a negative percentage")
     return number
 
 
@@ -306,6 +322,15 @@ def colour_scales(values, scale, log):
 # puts the median difference a fifth of the way along the bar where it can be
 # seen, and saturates the tail.
 SCALE_PERCENTILE = 90.0
+
+# How far apart two runs' exposures in a bin can be, as a percentage of the
+# larger, for the bin still to be compared. Two runs over the same pointings
+# record the same exposure to the last digit, while a bin at the edge of the
+# coverage that only one of them swept an extra pointing set across is tens of
+# percent apart, so the cut does not need to be fine. It sits a little above
+# zero so rounding in how the exposure was accumulated is not taken for a
+# different set of pointings.
+EXPOSURE_TOLERANCE = 1.0
 
 
 def robust_extent(deviations, percentile=SCALE_PERCENTILE):
@@ -534,7 +559,7 @@ def pair_names(paths, directories):
     return versions if versions[0] != versions[1] else ["first", "second"]
 
 
-def jointly_observed(datasets, order):
+def jointly_observed(datasets, order, tolerance=EXPOSURE_TOLERANCE):
     """Bins both runs actually pointed at, from the exposure they recorded.
 
     Two maps built over different windows looked at different sky, and outside
@@ -544,18 +569,34 @@ def jointly_observed(datasets, order):
     bin neither run ever looked at compares as a flawless match -- a difference
     of zero, drawn in the "no change" colour right across the unobserved sky.
 
-    Falls back to comparing everywhere if either file has no exposure to go on,
-    which is worse but is the most the file supports.
+    Both runs having looked at a bin is not enough on its own, though. A run
+    with a pointing set the other lacks sweeps that extra day across a strip of
+    sky at the edge of the coverage, and every bin in the strip is exposed in
+    both runs but accumulated over different pointings. Those bins disagree by
+    tens of percent for a reason that has nothing to do with the processing, and
+    they come out as a band along the edge of the comparison. So a bin is only
+    compared if the two exposures in it are within `tolerance` percent of the
+    larger of them.
+
+    Returns the bins both runs looked at, and the ones among them whose
+    exposures also match, which are the bins to compare. Falls back to comparing
+    everywhere if either file has no exposure to go on, which is worse but is
+    the most the file supports.
     """
     if not all("exposure_factor" in dataset.data_vars for dataset in datasets):
         print("  no exposure_factor to restrict on, comparing every bin")
         sizes = datasets[0].sizes
-        return np.ones(
+        everywhere = np.ones(
             (sizes["energy"], sizes["latitude"], sizes["longitude"]), dtype=bool
         )
-    return np.logical_and(
-        *(panel_values(dataset, "exposure_factor", order) > 0 for dataset in datasets)
+        return everywhere, everywhere
+    mine, theirs = (
+        panel_values(dataset, "exposure_factor", order) for dataset in datasets
     )
+    looked = (mine > 0) & (theirs > 0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mismatch = 100 * np.abs(mine - theirs) / np.maximum(mine, theirs)
+    return looked, looked & (mismatch <= tolerance)
 
 
 def map_variables(dataset):
@@ -814,8 +855,13 @@ def compare_pair(key, paths, directories, args, output_dir):
         first, args.center, args.east_left
     )
     gridlines = longitude_gridlines(center, args.east_left)
-    observed = jointly_observed(datasets, order)
-    print(f"  {observed.mean():.1%} of bins were looked at by both runs, compared")
+    looked, observed = jointly_observed(datasets, order, args.exposure_tolerance)
+    print(
+        f"  {looked.mean():.1%} of bins were looked at by both runs; "
+        f"{(looked & ~observed).sum()} of them with exposures more than "
+        f"{args.exposure_tolerance:g}% apart are left out, "
+        f"{observed.mean():.1%} compared"
+    )
 
     source_cmap = (
         plt.get_cmap(args.cmap) if args.cmap else MAP_CMAP
@@ -870,8 +916,9 @@ def compare_pair(key, paths, directories, args, output_dir):
         f"{names[0]} {paths[0].name}  vs  {names[1]} {paths[1].name}\n"
         f"{first.attrs.get('Spice_reference_frame', 'HAE')} centred on "
         f"{center % 360:g}°, {'east left' if args.east_left else 'east right'}; "
-        f"the two comparison rows cover only the {observed.mean():.0%} of bins "
-        f"both runs looked at",
+        f"the comparison rows cover only the {observed.mean():.0%} of bins "
+        f"both runs looked at with exposures within "
+        f"{args.exposure_tolerance:g}%",
         output_dir / f"{key}_{names[0]}_vs_{names[1]}.png",
     )
 
@@ -964,6 +1011,19 @@ def main():
         "percentile saturate, which the arrows on the colour bar show. Raise it "
         "to see how far the worst bins really go, lower it to bring out small "
         "differences",
+    )
+    parser.add_argument(
+        "--exposure-tolerance",
+        type=tolerance,
+        default=EXPOSURE_TOLERANCE,
+        metavar="PERCENT",
+        help=f"Comparing two maps, leave out any bin whose two exposures are "
+        f"more than this far apart, as a percentage of the larger (default: "
+        f"{EXPOSURE_TOLERANCE:g}). A pointing set only one run has sweeps a "
+        "strip of sky at the edge of the coverage that both runs looked at but "
+        "over different pointings, and those bins come out as a band of large "
+        "differences along the edge. 100 or more compares every bin both runs "
+        "looked at",
     )
     parser.add_argument(
         "--log",
