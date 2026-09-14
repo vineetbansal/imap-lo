@@ -10,23 +10,23 @@ cd 3S6_l1b_oxy_ram_maps
 
 cd ..
 
-cd python
+# cd python
 
-python3.11 csv2yaml_nathan.py 
+# python3.11 csv2yaml_nathan.py
 
-cd ..
+# cd ..
 
 cd 3S7_l1b_sputterbootstrap_ram
 
 ./batch_run.sh
 
-cd .. 
+cd ..
 
 cd 3S8_l1b_cg_corrected
 
 ./batch_run.sh
 
-cd .. 
+cd ..
 
 
 # ./update_sync.sh

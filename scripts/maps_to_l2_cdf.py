@@ -1,10 +1,11 @@
-"""Convert 3S5 or 3S7 ram-map CSVs into an IMAP-Lo L2 intensity-map CDF.
+"""Convert 3S5, 3S7 or 3S8 ram-map CSVs into an IMAP-Lo L2 intensity-map CDF.
 
 From 3S5 this produces the equivalent of the SDC's ``enansnbs`` product -- ENA
 intensity with No Sputter and No BootStrap corrections. From 3S7 it produces
-``enasbs``, the same intensity after the sputter and bootstrap corrections.
-Which one is decided by the step folder --maps-dir is in. 3S8
-(compton-getting) is not handled.
+``enasbs``, the same intensity after the sputter and bootstrap corrections. From
+3S8 it produces ``enasbs-h-hf``, that intensity after the Compton-Getting
+correction into the heliospheric frame. Which one is decided by the step folder
+--maps-dir is in.
 
 The CDF schema is cloned from a reference SDC file rather than hand-written, so
 every global attribute, variable attribute, data type and dimension matches by
@@ -18,7 +19,8 @@ Usage
         --out-dir  3S5_l1b_ram_maps/outdir/pivot_90/cdf
 
 Pass ``--maps-dir 3S7_l1b_sputterbootstrap_ram/outdir/pivot_90/maps`` for the
-enasbs product; the same template works for both.
+enasbs product, or ``--maps-dir 3S8_l1b_cg_corrected/outdir/pivot_90/maps`` for
+the Compton-Getting corrected one; the same template works for all three.
 """
 
 import argparse
@@ -38,6 +40,7 @@ FILL_I = -9223372036854775808
 _SQRT = np.sqrt
 _3S5 = "3S5_l1b_ram_maps"
 _3S7 = "3S7_l1b_sputterbootstrap_ram"
+_3S8 = "3S8_l1b_cg_corrected"
 
 # L2 variable <- (step folder, map file name for an ESA step, transform).
 #
@@ -90,6 +93,28 @@ STEPS = {
             "ena_intensity_sys_err_plus": (_3S7, "map_flux_{esa}_Hy_boot_unu.csv", None),
             "exposure_factor": (_3S7, "map_expo_esa{esa}.csv", None),
             **_BACKGROUND,
+        },
+    },
+    # Compton-Getting corrected, from cg_correction_V5.py: the 3S7 intensity
+    # and the 3S5 background, each taken into the heliospheric frame. The
+    # SDC's hf product scales its bg_intensity too, so unlike 3S7 the
+    # background comes from this step rather than from 3S5. The correction
+    # changes no exposure (the SDC's hf and sf exposure_factor are identical)
+    # and 3S8 writes none, so it comes from 3S7, which the intensity was built
+    # from.
+    _3S8: {
+        "descriptor": "enasbs-h-hf-nsp-ram-hae-6deg-6mo",
+        "manifests": _3S5,
+        "sources": {
+            "ena_intensity": (_3S8, "map_cgflux_esa{esa}.csv", None),
+            "ena_intensity_stat_uncert": (_3S8, "map_cgfvar_esa{esa}.csv", _SQRT),
+            "ena_intensity_sys_err": (_3S8, "map_cgfunc_esa{esa}.csv", None),
+            "ena_intensity_sys_err_minus": (_3S8, "map_cgfunl_esa{esa}.csv", None),
+            "ena_intensity_sys_err_plus": (_3S8, "map_cgfunu_esa{esa}.csv", None),
+            "exposure_factor": (_3S7, "map_expo_esa{esa}.csv", None),
+            "bg_intensity": (_3S8, "bkg_cgflux_esa{esa}.csv", None),
+            "bg_intensity_stat_uncert": (_3S8, "bkg_cgfvar_esa{esa}.csv", _SQRT),
+            "bg_intensity_sys_err": (_3S8, "bkg_cgfunc_esa{esa}.csv", None),
         },
     },
 }
