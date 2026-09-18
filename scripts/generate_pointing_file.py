@@ -175,70 +175,95 @@ def parse_version(name: str) -> tuple[int, int]:
         return (-1, -1)
 
 
-def pset_files_by_day(pset_dir: Path, allow_test: bool = False) -> dict[int, tuple[str, bool]]:
-    """Map YYYYDDD -> (best pset file, came_from_out_of_band) for that day.
+def pset_repointing(name: str) -> str | None:
+    """The repointing a pset file name carries, as its zero padded digits."""
+    return name.split("-repoint")[1].split("_")[0] if "-repoint" in name else None
 
-    In-band products always win.  A day whose only products are out of band falls
-    back to the best of those, flagged so the caller can sanity check the axis it
-    yields before trusting it -- see TEST_VERSION_FLOOR.
+
+def pset_files_by_pointing(
+    pset_dir: Path, allow_test: bool = False
+) -> dict[tuple[int, str | None], tuple[str, bool]]:
+    """Map (YYYYDDD, repointing) -> (best pset file, came_from_out_of_band).
+
+    Keyed by repointing rather than by day: a day can carry more than one, and
+    they do not share a spin axis -- 2026-097 has repoint00209 and repoint00211,
+    whose axes are 1.08 deg apart.  Keeping only the best file per day gave the
+    whole day one of the two axes, so the other repointing's counts were mapped
+    against a look direction that was never theirs.
+
+    In-band products always win.  A pointing whose only products are out of band
+    falls back to the best of those, flagged so the caller can sanity check the
+    axis it yields before trusting it -- see TEST_VERSION_FLOOR.
     """
-    in_band: dict[int, list[tuple[tuple[int, int], str]]] = {}
-    out_of_band: dict[int, list[tuple[tuple[int, int], str]]] = {}
+    Key = tuple[int, str | None]
+    in_band: dict[Key, list[tuple[tuple[int, int], str]]] = {}
+    out_of_band: dict[Key, list[tuple[tuple[int, int], str]]] = {}
     for path in sorted(glob.glob(str(pset_dir / "*.cdf"))):
         name = os.path.basename(path)
         version = parse_version(name)
         stamp = name.split("_")[4].split("-")[0]
         yd = int(dt.datetime.strptime(stamp, "%Y%m%d").strftime("%Y%j"))
+        key = (yd, pset_repointing(name))
         bucket = in_band if (allow_test or version[0] < TEST_VERSION_FLOOR) else out_of_band
-        bucket.setdefault(yd, []).append((version, path))
+        bucket.setdefault(key, []).append((version, path))
 
-    chosen = {yd: (max(v)[1], False) for yd, v in in_band.items()}
-    for yd, v in out_of_band.items():
-        if yd not in chosen:
-            chosen[yd] = (max(v)[1], True)
+    chosen = {key: (max(v)[1], False) for key, v in in_band.items()}
+    for key, v in out_of_band.items():
+        if key not in chosen:
+            chosen[key] = (max(v)[1], True)
     return chosen
 
 
-HEADER = "YYYYDDD,SPINRA,SPINDEC"
 
 
-def read_existing(path: Path) -> dict[int, str]:
-    """Map YYYYDDD -> the file's own line for it, so untouched days survive verbatim.
+HEADER = "YYYYDDD,SPINRA,SPINDEC,REPOINT"
 
+
+def read_existing(path: Path) -> dict[tuple[int, str | None], str]:
+    """Map (YYYYDDD, repointing) -> the file's own line, so untouched rows survive.
+
+    A file written before the repoint column existed has three fields, and its
+    rows key on (day, None); they keep working until the day is recomputed.
     Anything whose first field is not an integer day (the header, blank lines,
     comments) is dropped rather than guessed at; the header is rewritten below.
     """
     if not path.exists():
         return {}
-    rows: dict[int, str] = {}
+    rows: dict[tuple[int, str | None], str] = {}
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
+        fields = line.split(",")
         try:
-            yd = int(line.split(",", 1)[0])
+            yd = int(fields[0])
         except ValueError:
             continue
-        rows[yd] = line
+        repoint = fields[3].strip() if len(fields) > 3 and fields[3].strip() else None
+        rows[(yd, repoint)] = line
     return rows
 
 
-def merge_into(path: Path, rows: list[tuple[int, float, float]]) -> list[int]:
+def merge_into(path: Path, rows: list[tuple[int, str | None, float, float]]) -> list[int]:
     """Write *rows* into *path*, preserving existing days that *rows* does not cover.
 
     The file is rewritten in full -- there is no way to splice a line into a CSV
-    in place -- but every day not recomputed keeps the exact text it had.
-    Returns the days carried over.
+    in place -- but every day not recomputed keeps the exact text it had.  A day
+    that is recomputed drops all of its old rows first, so a day-keyed row left
+    by an older version of this script cannot survive beside the per-repointing
+    rows that replace it.  Returns the days carried over.
     """
     merged = read_existing(path)
-    kept = sorted(set(merged) - {yd for yd, _, _ in rows})
-    for yd, ra, dec in rows:
-        merged[yd] = f"{yd},{ra:.6f},{dec:.6f}"
+    recomputed = {yd for yd, _, _, _ in rows}
+    kept = sorted({yd for yd, _ in merged} - recomputed)
+    merged = {key: line for key, line in merged.items() if key[0] not in recomputed}
+    for yd, repoint, ra, dec in rows:
+        merged[(yd, repoint)] = f"{yd},{ra:.6f},{dec:.6f},{repoint or ''}"
 
     tmp = path.with_suffix(path.suffix + ".tmp")
     with open(tmp, "w") as fh:
         fh.write(HEADER + "\n")
-        for yd in sorted(merged):
-            fh.write(merged[yd] + "\n")
+        for key in sorted(merged, key=lambda k: (k[0], k[1] or "")):
+            fh.write(merged[key] + "\n")
     os.replace(tmp, path)
     return kept
 
@@ -257,12 +282,14 @@ def main() -> None:
     args = ap.parse_args()
 
     furnish_kernels()
-    by_day = pset_files_by_day(args.pset_dir, args.allow_test_versions)
-    if not by_day:
+    by_pointing = pset_files_by_pointing(args.pset_dir, args.allow_test_versions)
+    if not by_pointing:
         raise SystemExit(f"no pset CDFs found under {args.pset_dir}")
 
     rows, failed, recovered = [], [], []
-    for yd, (path, out_of_band) in sorted(by_day.items()):
+    for (yd, repoint), (path, out_of_band) in sorted(
+        by_pointing.items(), key=lambda kv: (kv[0][0], kv[0][1] or "")
+    ):
         name = os.path.basename(path)
         try:
             with pycdf.CDF(path) as cdf:
@@ -283,12 +310,12 @@ def main() -> None:
             recovered.append((yd, name, angle))
 
         ra, dec = to_ra_dec(axis, args.frame)
-        rows.append((yd, ra, dec))
+        rows.append((yd, repoint, ra, dec))
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     kept = merge_into(args.out, rows)
 
-    print(f"{args.out}: {len(rows)} days written [{rows[0][0]}..{rows[-1][0]}], "
+    print(f"{args.out}: {len(rows)} pointings written [{rows[0][0]}..{rows[-1][0]}], "
           f"{len(kept)} kept from the existing file, frame={args.frame}")
     for yd, name, angle in recovered:
         print(f"  from out-of-band product (no in-band pset for this day, "

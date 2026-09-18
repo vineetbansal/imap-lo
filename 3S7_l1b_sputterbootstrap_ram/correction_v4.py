@@ -190,6 +190,14 @@ for pp in [75,90,105]:
             where=hy_expo[tar_esa-1]!=0
         )
 
+        # Subtracting the sputtered oxygen counts can take a low-count pixel
+        # below zero, which is not a rate the instrument can have observed.
+        # Clamp here, at the source, so the flux and both of its geometric
+        # factor excursions below are non-negative: unu and unl each carry the
+        # sign of the flux, and sqrt(unu*unl) would otherwise cancel two
+        # negatives into a spurious error bar on a pixel reported as empty.
+        cor_rate = np.maximum(cor_rate, 0.0)
+
         cor_rate_var=np.divide(
             cor_cnts_var,
             hy_expo[tar_esa-1]**2,

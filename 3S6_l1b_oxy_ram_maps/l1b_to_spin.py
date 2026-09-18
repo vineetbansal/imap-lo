@@ -247,7 +247,10 @@ for file in data_dir.glob("*.cdf"):
                 print(f"File not found: {f}")
                 sys.exit(1)
         
-        pointing_cols = ['YD', 'spin_ra','spin_dec']
+        ## The repoint column is optional: a pointing file written before the
+        ## column existed has three, and pandas leaves the fourth all NaN,
+        ## which the lookup below falls back on.
+        pointing_cols = ['YD', 'spin_ra','spin_dec', 'repoint']
         df_point = pd.read_csv(pointing_file, names=pointing_cols, skiprows=1)
         
         ## Convert yyyymmdd to YYYYDOY
@@ -278,6 +281,23 @@ for file in data_dir.glob("*.cdf"):
         df_p = df_point[df_point['YD']==int_YD]
         if df_p.empty:
             raise ValueError(f"No matching rows found for {YD} in the pointing file")
+
+        ## A day can carry more than one repointing -- 2026-097 has
+        ## repoint00209 and repoint00211, whose spin axes are 1.08 deg apart --
+        ## so the axis is taken for this file's own repointing, the way the
+        ## goodtimes already are in select_goodtimes().  Keying on the day
+        ## alone gave every pointing of such a day the axis of whichever row
+        ## came first, which mapped one repointing's counts against the other's
+        ## look direction.  A pointing file with no repoint column, or one that
+        ## does not list this repointing, still matches on the day.
+        if repoint is not None and df_p['repoint'].notna().any():
+            per_repoint = df_p[df_p['repoint'].astype('Int64') == int(repoint)]
+            if not per_repoint.empty:
+                df_p = per_repoint
+        if len(df_p) > 1:
+            raise ValueError(
+                f"{YD} repoint{repoint}: {len(df_p)} pointing file rows, expected 1"
+            )
 
         s_ra = df_p['spin_ra'].astype(float).values[0]
         s_dec = df_p['spin_dec'].astype(float).values[0]

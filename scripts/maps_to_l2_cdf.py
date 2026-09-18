@@ -21,6 +21,16 @@ Usage
 Pass ``--maps-dir 3S7_l1b_sputterbootstrap_ram/outdir/pivot_90/maps`` for the
 enasbs product, or ``--maps-dir 3S8_l1b_cg_corrected/outdir/pivot_90/maps`` for
 the Compton-Getting corrected one; the same template works for all three.
+
+3S7 also writes the sputter correction alone, before bootstrap; add
+``--product enasnbs`` with a 3S7 --maps-dir for the SDC's ``enasnbs`` product.
+
+Pass a step's ``masked_maps`` directory instead of its ``maps`` one, e.g.
+``--maps-dir 3S8_l1b_cg_corrected/outdir/pivot_90/masked_maps``, for the
+ISN-masked product (``enasbsMsk-h-hf`` from 3S8). The intensity and its
+uncertainties are read from ``masked_maps`` and set to fill on the masked
+pixels; the exposure, background and time coverage come from ``maps`` beside
+it, as the SDC's Msk products leave those unmasked.
 """
 
 import argparse
@@ -41,6 +51,12 @@ _SQRT = np.sqrt
 _3S5 = "3S5_l1b_ram_maps"
 _3S7 = "3S7_l1b_sputterbootstrap_ram"
 _3S8 = "3S8_l1b_cg_corrected"
+
+# Each step's post_mask_v3.py writes its ISN-masked maps here, beside maps/, as
+# the same intensity maps with masked pixels set to NaN. Only the intensity is
+# masked: exposure, background and manifests are written to maps/ alone.
+MASKED = "masked_maps"
+UNMASKED = "maps"
 
 # L2 variable <- (step folder, map file name for an ESA step, transform).
 #
@@ -80,8 +96,8 @@ STEPS = {
         },
     },
     # Sputter then bootstrap corrected, from correction_v4.py. Its "sput"
-    # maps are the sputter correction alone, an intermediate step the SDC
-    # does not publish a product for.
+    # maps are the sputter correction alone, which is the SDC's enasnbs
+    # product -- see ALTERNATIVES.
     _3S7: {
         "descriptor": "enasbs-h-sf-nsp-ram-hae-6deg-6mo",
         "manifests": _3S5,
@@ -118,6 +134,49 @@ STEPS = {
         },
     },
 }
+
+# Other products a step's maps make besides the one in STEPS, by SDC product
+# name, chosen with --product. They share the step's folder, so the folder
+# alone cannot say which is wanted.
+ALTERNATIVES = {
+    _3S7: {
+        # Sputter corrected but not bootstrap corrected: correction_v4.py's
+        # intermediate "sput" maps, written beside the "boot" ones in the same
+        # form, with the same exposure and background as enasbs
+        "enasnbs": {
+            "descriptor": "enasnbs-h-sf-nsp-ram-hae-6deg-6mo",
+            "manifests": _3S5,
+            "sources": {
+                "ena_intensity": (_3S7, "map_flux_{esa}_Hy_sput_cor.csv", None),
+                "ena_intensity_stat_uncert": (_3S7, "map_flux_{esa}_Hy_sput_var.csv", _SQRT),
+                "ena_intensity_sys_err": (_3S7, "map_flux_{esa}_Hy_sput_unc.csv", None),
+                "ena_intensity_sys_err_minus": (_3S7, "map_flux_{esa}_Hy_sput_unl.csv", None),
+                "ena_intensity_sys_err_plus": (_3S7, "map_flux_{esa}_Hy_sput_unu.csv", None),
+                "exposure_factor": (_3S7, "map_expo_esa{esa}.csv", None),
+                **_BACKGROUND,
+            },
+        },
+    },
+}
+
+
+def product_name(config: dict) -> str:
+    """The SDC product a config makes, e.g. enasbs, the start of its descriptor."""
+    return config["descriptor"].split("-", 1)[0]
+
+
+def select_config(step: str, product: str | None) -> dict:
+    """The config for the product wanted from a step: its default, or --product."""
+    config = STEPS[step]
+    if product is None or product == product_name(config):
+        return config
+    choices = ALTERNATIVES.get(step, {})
+    if product not in choices:
+        raise ValueError(
+            f"{step} makes {', '.join([product_name(config), *choices])}, "
+            f"not {product}"
+        )
+    return choices[product]
 
 # No 3S5 equivalent exists; the reference SDC file leaves these fully filled too.
 FILLED_FLOAT = ("solid_angle", "obs_date_range")
@@ -190,14 +249,24 @@ def time_coverage(maps_dir: Path) -> tuple[dt.datetime, int, list[str]]:
 
 
 def build(maps_dir: Path, template_path: Path, out_dir: Path, pivot: int,
-          version: str = "001") -> Path:
+          version: str = "001", product: str | None = None) -> Path:
     step, root, below = locate(maps_dir)
-    config = STEPS[step]
+    config = select_config(step, product)
+
+    # A masked_maps directory holds only the masked intensity, so everything
+    # else is read from the maps/ directory beside it
+    masked = below.name == MASKED
+    if masked:
+        below = below.with_name(UNMASKED)
+
     start, span_ns, parents = time_coverage(root / config["manifests"] / below)
 
     data = {}
     for name, (source, filename, transform) in config["sources"].items():
-        arr = stack_quantity(root / source / below, filename)
+        directory = root / source / below
+        if masked and name.startswith("ena_intensity"):
+            directory = directory.with_name(MASKED)
+        arr = stack_quantity(directory, filename)
         data[name] = transform(arr) if transform else arr
 
     # Unobserved pixels carry no exposure; the SDC product marks those FILLVAL
@@ -208,7 +277,20 @@ def build(maps_dir: Path, template_path: Path, out_dir: Path, pivot: int,
         if name != "exposure_factor":
             data[name] = np.where(unobserved, FILL_F, data[name])
 
-    descriptor = f"l{pivot:03d}-{config['descriptor']}"
+    # The SDC's Msk products mark the ISN-masked pixels FILLVAL in the intensity
+    # and its four uncertainties, and leave the exposure and background alone.
+    # post_mask_v3.py marks them NaN in the intensity map, which sets the
+    # pixels for all five.
+    if masked:
+        isn = np.isnan(data["ena_intensity"])
+        for name in data:
+            if name.startswith("ena_intensity"):
+                data[name] = np.where(isn, FILL_F, data[name])
+
+    product, frame = config["descriptor"].split("-", 1)
+    if masked:
+        product += "Msk"
+    descriptor = f"l{pivot:03d}-{product}-{frame}"
     stem = f"imap_lo_l2_{descriptor}_{start:%Y%m%d}_v{version}"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{stem}.cdf"
@@ -260,6 +342,11 @@ def main() -> None:
     ap.add_argument("--pivot", type=int, default=None,
                     help="default: parsed from the pivot_NN directory name")
     ap.add_argument("--version", default="001")
+    ap.add_argument("--product", default=None,
+                    help="SDC product to make, when a step makes more than one: "
+                    + "; ".join(f"{step}: {', '.join([product_name(STEPS[step]), *alts])}"
+                                for step, alts in ALTERNATIVES.items())
+                    + " (default: the first)")
     args = ap.parse_args()
 
     pivot = args.pivot
@@ -271,7 +358,8 @@ def main() -> None:
             ap.error("--pivot not given and no pivot_NN component in --maps-dir")
 
     out_dir = args.out_dir or args.maps_dir.parent / "cdf"
-    path = build(args.maps_dir, args.template, out_dir, pivot, args.version)
+    path = build(args.maps_dir, args.template, out_dir, pivot, args.version,
+                 args.product)
     print(path)
 
 

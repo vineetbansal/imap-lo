@@ -94,7 +94,10 @@ What can be done is to leave out the bins where the two runs' exposures
 disagree, which are the bins a pointing set only one of them has swept across:
 a run with an extra day of pointings shows up as a band of large differences
 along the edge of the coverage otherwise. --exposure-tolerance sets how far
-apart the exposures can be, 1% by default.
+apart the exposures can be. By default it is 100%, which compares every bin
+both runs looked at: two runs over the same pointings are expected to record
+the same exposure, so a band like that is a discrepancy to see, not to hide.
+Lower it (to 1, say) when comparing runs over different pointings.
 Each pair gets one figure, carrying a row for every variable asked for and each
 comparison of it: the two runs, then the comparisons --compare asked for. Each
 row is one quantity across every energy step, and carries its own colour bar --
@@ -324,13 +327,16 @@ def colour_scales(values, scale, log):
 SCALE_PERCENTILE = 90.0
 
 # How far apart two runs' exposures in a bin can be, as a percentage of the
-# larger, for the bin still to be compared. Two runs over the same pointings
-# record the same exposure to the last digit, while a bin at the edge of the
+# larger, for the bin still to be compared. The default of 100 leaves nothing
+# out, since a percentage of the larger cannot exceed it: the runs compared here
+# are meant to be over the same pointings, which record the same exposure to the
+# last digit, so a bin whose exposures disagree is a discrepancy to show rather
+# than one to cut. For runs over different pointings, a bin at the edge of the
 # coverage that only one of them swept an extra pointing set across is tens of
-# percent apart, so the cut does not need to be fine. It sits a little above
-# zero so rounding in how the exposure was accumulated is not taken for a
-# different set of pointings.
-EXPOSURE_TOLERANCE = 1.0
+# percent apart, and a cut a little above zero (1, say) leaves those out without
+# taking rounding in how the exposure was accumulated for a different set of
+# pointings.
+EXPOSURE_TOLERANCE = 100.0
 
 
 def robust_extent(deviations, percentile=SCALE_PERCENTILE):
@@ -1006,7 +1012,7 @@ def main():
         help=f"How much of a comparison row's spread its colour range covers, "
         f"as a percentile of the magnitudes in it (default: {SCALE_PERCENTILE:g}). "
         "These distributions are heavy tailed -- a median relative difference of "
-        "10% against a 99th percentile near 250% -- so a range taken from the "
+        "10%% against a 99th percentile near 250%% -- so a range taken from the "
         "extremes leaves the typical bin white and says nothing. Bins past the "
         "percentile saturate, which the arrows on the colour bar show. Raise it "
         "to see how far the worst bins really go, lower it to bring out small "
@@ -1019,11 +1025,12 @@ def main():
         metavar="PERCENT",
         help=f"Comparing two maps, leave out any bin whose two exposures are "
         f"more than this far apart, as a percentage of the larger (default: "
-        f"{EXPOSURE_TOLERANCE:g}). A pointing set only one run has sweeps a "
-        "strip of sky at the edge of the coverage that both runs looked at but "
-        "over different pointings, and those bins come out as a band of large "
-        "differences along the edge. 100 or more compares every bin both runs "
-        "looked at",
+        f"{EXPOSURE_TOLERANCE:g}, which compares every bin both runs looked "
+        "at, as runs over the same pointings should record the same exposure). "
+        "For runs over different pointings, lower it (to 1, say): a pointing "
+        "set only one run has sweeps a strip of sky at the edge of the coverage "
+        "that both runs looked at but over different pointings, and those bins "
+        "come out as a band of large differences along the edge",
     )
     parser.add_argument(
         "--log",
