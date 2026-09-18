@@ -101,7 +101,11 @@ def filter_and_write_cdf( args):
     spinbin2 = (spinbin * 60 / 3600).astype(int)
     # this needs to be fixed everywhere
     
-    badtime   = cdf['badtimes'][:] # not used, but reserved for future filtering
+#    badtime   = cdf['badtimes'][:] # not used, but reserved for future filtering
+    try:
+        badtime = cdf['badtimes'][:]
+    except KeyError:
+        badtime = None
     tof0      = cdf['tof0'][:]
     tof1      = cdf['tof1'][:]
     tof2      = cdf['tof2'][:]

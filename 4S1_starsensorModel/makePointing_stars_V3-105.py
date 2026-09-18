@@ -521,7 +521,7 @@ def star_spin(args, ra_st, dec_st, mag_st, phaseadjust, pivotAng):
             dec = dec_st[i]
 
             angle_to_spin, phase_angle = star_angles(args, ra, dec, phaseadjust)
-            elevation =  angle_to_spin - pivotAng 
+            elevation = (angle_to_spin - pivotAng + 180.0) % 360.0 - 180.0
             
             if (np.abs(elevation) < 7.0):
             
@@ -736,14 +736,14 @@ row_prev = earlier.loc[idx_prev]
 dt_days = (row["date_dt"] - row_prev["date_dt"]).total_seconds() / 86400.0
 
 # --- gradients (deg/day) ---
-grad_lon = (row["spin_lon_eq"] - row_prev["spin_lon_eq"]) / dt_days
-grad_lat = (row["spin_lat_eq"] - row_prev["spin_lat_eq"]) / dt_days
+grad_lon = (row["spin_lon_eq_J2000"] - row_prev["spin_lon_eq_J2000"]) / dt_days
+grad_lat = (row["spin_lat_eq_J2000"] - row_prev["spin_lat_eq_J2000"]) / dt_days
 
 # --- project to target ---
 dt_target = (target_dt - row["date_dt"]).total_seconds() / 86400.0
 
-spin_lon_proj = row["spin_lon_eq"] + grad_lon * dt_target
-spin_lat_proj = row["spin_lat_eq"] + grad_lat * dt_target
+spin_lon_proj = row["spin_lon_eq_J2000"] + grad_lon * dt_target
+spin_lat_proj = row["spin_lat_eq_J2000"] + grad_lat * dt_target
 
 args.spinvector[0] = spin_lon_proj
 args.spinvector[1] = spin_lat_proj

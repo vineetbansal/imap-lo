@@ -14,7 +14,12 @@ if [[ -z "$2" ]]; then
 fi
 
 # Go to the root path where data will be downloaded to
+source setup.sh 
 cd $IMAP_DATA_DIR
+
+# Get rid f any old data (commented out 8/14/2027)
+# rm -rf imap/lo/l1a/*
+# rm -rf imap/lo/l1b/*
 
 # Fetch the latest DE, NHK, and HISTRATES products from the SDC
 # Annoying thta you can't do a query-and-download in one step...
@@ -82,23 +87,23 @@ for file in $FILES; do
 done
 echo "got l1c pset"
 
-
-
 # Clear out the old data in the Lo team's auto-gt tool
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input/*
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input_de/*
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/nhk/*
 
+cd ..
+
 # Move the new data to the location of the Lo team's auto-gt tool
 echo "copying files into new homes"
-cp imap/lo/l1a/*/*/*_de* ./input_l1a_de
-cp imap/lo/l1b/*/*/*_histrates* ./input_l1b_histrates
-cp imap/lo/l1b/*/*/*_monitorrates* ./input_l1b_monitorrates
-cp imap/lo/l1b/*/*/*_de* ./input_de
-cp imap/lo/l1b/*/*/*_nhk* ./input_hk
-cp imap/lo/l1b/*/*/*_shk* ./input_shk
-cp imap/lo/l1b/*/*/*_prostar* ./input_prostar
-cp imap/lo/l1c/*/*/*_pset* ./input_l1c
+cp $IMAP_DATA_DIR/imap/lo/l1a/*/*/*_de* ./input_l1a_de
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_histrates* ./input_l1b_histrates
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_monitorrates* ./input_l1b_monitorrates
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_de* ./input_de
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_nhk* ./input_hk
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_shk* ./input_shk
+cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_prostar* ./input_prostar
+cp $IMAP_DATA_DIR/imap/lo/l1c/*/*/*_pset* ./input_l1c
 echo "done copying over"
 
 echo "cleaning up homes"

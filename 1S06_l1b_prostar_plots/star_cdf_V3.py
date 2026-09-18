@@ -96,6 +96,16 @@ STAR_SYNC_FIRST_REPOINT = 256
 STAR_SYNC_LAST_REPOINT = 334
 STAR_SYNC_SHIFT_DEG = -0.25
 
+# this is to account for the shift put in at the SDC
+# the SDC subtracts 0.25 deg starting in 256 
+# we compensate for this
+STAR_SYNC_SDC_FIRST_REPOINT = 256
+STAR_SYNC_SDC_SHIFT_DEG = +0.25
+
+# mounting shift 
+# this is associated with the mounting of the instrument 
+MOUNTING_SHIFT_DEG = -0.25
+
 match = re.search(r"repoint(\d+)", os.path.basename(file))
 
 if match:
@@ -110,6 +120,13 @@ if (repoint >= STAR_SYNC_FIRST_REPOINT) and (repoint <= STAR_SYNC_LAST_REPOINT):
     star_sync_shift = STAR_SYNC_SHIFT_DEG
 else:
     star_sync_shift = 0.0
+
+if (repoint >= STAR_SYNC_SDC_FIRST_REPOINT):
+    star_sync_sdc_shift = STAR_SYNC_SDC_SHIFT_DEG
+else:
+    star_sync_sdc_shift = 0.0
+
+star_mounting_shift = MOUNTING_SHIFT_DEG
 
 print(
     f"Repoint {repoint}: applying star-sync shift "
@@ -159,7 +176,8 @@ ax2.plot(val_720[mask], angle_centers[mask], '-', color='b',lw=0.5)
 # nep = angle_centers[mask]
 # nep = (spinangle[mask] - 2.0 + star_sync_shift) % 360
 # TOOK OUT THE 2 DEG PER TIM PLUMMER, 8/19/2026
-nep = (spinangle[mask] + star_sync_shift) % 360
+# this applies all the of the shifts
+nep = (spinangle[mask] + star_sync_shift + star_sync_sdc_shift + star_mounting_shift) % 360
 voltage = val_720[mask]
 
 out_arr = np.column_stack((nep, voltage))
