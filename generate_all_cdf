@@ -1,0 +1,42 @@
+#!/bin/bash
+
+source ../.venv/bin/activate
+
+# Clear the CDFs of any earlier run, so files whose names carry a different date
+# are not left beside the new ones. Subfolders (e.g. map_cdf/original) are kept.
+mkdir -p map_cdf
+rm -f map_cdf/*.cdf
+
+for pp in 75 90 105; do
+  for d in maps masked_maps; do
+    python scripts/maps_to_l2_cdf.py --maps-dir 3S5_l1b_ram_maps/outdir/pivot_$pp/$d             --template scripts/template.cdf --out-dir map_cdf/
+    python scripts/maps_to_l2_cdf.py --maps-dir 3S7_l1b_sputterbootstrap_ram/outdir/pivot_$pp/$d --template scripts/template.cdf --out-dir map_cdf/
+    python scripts/maps_to_l2_cdf.py --maps-dir 3S7_l1b_sputterbootstrap_ram/outdir/pivot_$pp/$d --template scripts/template.cdf --out-dir map_cdf/ --product enasnbs
+    python scripts/maps_to_l2_cdf.py --maps-dir 3S8_l1b_cg_corrected/outdir/pivot_$pp/$d         --template scripts/template.cdf --out-dir map_cdf/
+  done
+done
+
+# Compare every product against the SDC's run of it over the same window, one
+# folder of images per variable, map_compare/<variable>/. These are the map
+# variables both our CDFs and the SDC's carry; bg_intensity_sys_err is ours
+# alone, and the SDC's count and rate variables are theirs alone.
+VARIABLES="
+  ena_intensity
+  ena_intensity_stat_uncert
+  ena_intensity_sys_err
+  ena_intensity_sys_err_minus
+  ena_intensity_sys_err_plus
+  exposure_factor
+  bg_intensity
+  bg_intensity_stat_uncert
+"
+
+# Clear the images of any earlier comparison first, both the per-variable
+# folders and any loose images from before they existed. Other subfolders
+# (e.g. map_compare/exposure_tolerance_1_percent) are kept.
+mkdir -p map_compare
+rm -f map_compare/*.png
+for var in $VARIABLES; do
+  rm -rf "map_compare/$var"
+  python scripts/plot_l2_map.py /media/vineetb/T7/imap/lo/l2/2026/01 ./map_cdf --output "map_compare/$var" --variable "$var" --saturate 99
+done

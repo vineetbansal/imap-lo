@@ -13,7 +13,7 @@ BKG_CONST = 0.0  # Constant background value to subtract if strictly necessary (
 E_u = 4.661
 
 # Nominal IMAP-Lo energy geometric geometric centers (eV)
-E_k = np.array([16.0, 30.0, 56.0, 106.0, 200.0, 404.0, 787.0], dtype=float)
+E_k = np.array([16.33, 30.47, 55.76, 106.26, 200.04, 404.96, 787.29], dtype=float)
 
 # Transmission scale factor polynomial coefficients M0...M5 from Table 1
 M_eta = np.array([
@@ -139,6 +139,16 @@ def predictor_corrector(flux, max_iter=20, tol=0.005):
             gv = g_arr[:, k]
             e[:, k] = (M_eta[k,0] + M_eta[k,1]*gv + M_eta[k,2]*(gv**2) + 
                        M_eta[k,3]*(gv**3) + M_eta[k,4]*(gv**4) + M_eta[k,5]*(gv**5))
+            # The eta polynomial is a fit over a physical range of spectral
+            # index. An anomalous point in a pixel's spectrum -- a deep dip at
+            # one ESA level -- throws gamma far outside that range, where the
+            # fifth-order term can take eta negative. A negative transmission
+            # makes J_src negative, and the next pass takes log() of it, so the
+            # pixel turns to NaN and the NaN spreads down the energy steps until
+            # nan_to_num writes the whole low-energy spectrum out as zero.
+            # Fall back to no correction instead, as the SDC does in
+            # imap_processing/ena_maps/utils/corrections.py.
+            e[:, k] = np.where(e[:, k] < 0, 1.0, e[:, k])
         return e
 
     # Step 1: Initial predictors

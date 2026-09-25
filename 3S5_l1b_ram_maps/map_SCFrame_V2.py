@@ -31,13 +31,13 @@ nmap = nra*ncolat*nesa
 eff_h = 1.0
 
 esa_energy = {
-    1: 0.016,
-    2: 0.030,
-    3: 0.056,
-    4: 0.106,
-    5: 0.200,
-    6: 0.405,
-    7: 0.787,
+    1: 0.01633,
+    2: 0.03047,
+    3: 0.05576,
+    4: 0.10626,
+    5: 0.20004,
+    6: 0.40496,
+    7: 0.78729,
     8: 1.821
 }
 
@@ -252,10 +252,26 @@ for pp in [75,90,105]:
                     # look_z = np.cos(pivot)
                     cosalpha = look_y
 
-                    cosalpha_map[jmap, imap] = cosalpha
+                    # Ram-side filter, per sample. A pixel is crossed by the
+                    # ram half of some pointings and the anti-ram half of
+                    # others, so the test cannot be made once per pixel after
+                    # accumulating: that keeps or drops every pointing's
+                    # samples on the say of whichever file was read last.
+                    if cosalpha <= 0.0:
+                        continue
+
+                    # Exposure-weighted, so the mean cosalpha of the pixel
+                    # matches the exposure it was built from
+                    cosalpha_map[jmap, imap] += cosalpha * expo[ia]
 
                     h_cnts_map[jmap,imap] += counts[ia]
                     exposure[jmap,imap] += expo[ia]
+
+        # Mean ram-side cosalpha per pixel, zero where nothing ram-side landed
+        cosalpha_map = np.divide(
+            cosalpha_map, exposure,
+            out=np.zeros_like(cosalpha_map), where=exposure > 0.0,
+        )
                     
         for imap in range(0, nra):
             for jmap in range(0,ncolat):
@@ -318,32 +334,6 @@ for pp in [75,90,105]:
                     else:
                         h_fvar_map[jmap,imap] = 0.0
                         h_fvto_map[jmap,imap] = h_fser_map[jmap,imap]**2
-                        
-        # ------------------------------------------------------------
-        # Final ram-side filter
-        # Keep only pixels where cosalpha > 0
-        # ------------------------------------------------------------
-        ram_mask = cosalpha_map > 0.0
-
-        for arr in [
-            h_cnts_map,
-            exposure,
-            h_rate_map,
-            h_rate_var,
-            h_flux_map,
-            h_fvar_map,
-            h_fser_map,
-            h_fsel_map,
-            h_fseu_map,
-            h_fvto_map,
-            back_rate_map,
-            back_rate_var,
-            back_flux_map,
-            back_flux_var,
-            stonoise_map,
-            stonoise_var_map,
-        ]:
-            arr[~ram_mask] = 0.0
 
         sbg_file = pd.DataFrame(stonoise_map)
         sbg_file.to_csv(map_dir+f"/map_stbg_esa{esa}.csv", index=False)

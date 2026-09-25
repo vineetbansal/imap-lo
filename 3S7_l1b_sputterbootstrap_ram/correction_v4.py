@@ -12,8 +12,8 @@ from scipy.ndimage import generic_filter
 
 
 hy_esa_energy = {
-    1:0.016,2:0.030,3:0.056,4:0.106,
-    5:0.200,6:0.404,7:0.787,8:1.6527
+    1:0.01633,2:0.03047,3:0.05576,4:0.10626,
+    5:0.20004,6:0.40496,7:0.78729,8:1.6527
 }
 
 hy_gf = {
@@ -184,6 +184,14 @@ for pp in [75,90,105]:
             out=np.zeros_like(cor_cnts),
             where=hy_expo[tar_esa-1]!=0
         )
+
+        # Subtracting the sputtered oxygen counts can take a low-count pixel
+        # below zero, which is not a rate the instrument can have observed.
+        # Clamp here, at the source, so the flux and both of its geometric
+        # factor excursions below are non-negative: unu and unl each carry the
+        # sign of the flux, and sqrt(unu*unl) would otherwise cancel two
+        # negatives into a spurious error bar on a pixel reported as empty.
+        cor_rate = np.maximum(cor_rate, 0.0)
 
         cor_rate_var=np.divide(
             cor_cnts_var,

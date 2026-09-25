@@ -15,6 +15,9 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 import pandas as pd, re, shutil
+import spiceypy
+from spacepy import pycdf
+from imap_processing.spice.time import ttj2000ns_to_met
 
 def radec2cart(ra,th):
 
@@ -89,12 +92,12 @@ def create_ra_dec(s_ra,s_dec,pivot_angle):
     
     return raf,decf
 
-def estimate_exposure_time(filename,YD, esa):
+def estimate_exposure_time(filename,YD, esa, repoint):
     cols = ["YD","gd_start","gd_end","bin_start","bin_end","Instrument",	"E-Step1",	"E-Step2",	"E-Step3",	"E-Step4",	"E-Step5",	"E-Step6",	"E-Step7",	"Comment"]
     
     df1 = pd.read_csv(filename,names=cols)
     
-    df = df1[df1['YD']==YD]
+    df = df1[(df1['YD']==YD) & df1['Comment'].str.contains(f"repoint{repoint}")]
     if df.empty:
         raise ValueError(f"No matching rows found for {YD} in Goodtime file")
     
@@ -143,6 +146,10 @@ data_dir = Path(data_dir_path)
 for x in [75,90,105]:
     os.makedirs(f'./outdir/pivot_{x}/daily', exist_ok=True)
 
+## Latest leap-second and spacecraft-clock kernels (each supersedes the earlier ones)
+for k in ("lsk/naif*.tls", "sclk/imap_sclk_*.tsc"):
+    spiceypy.furnsh(str(max((Path(__file__).parent.parent / "input_SPICE").glob(k))))
+
 for file in data_dir.glob("*.cdf"):
     try:
         file_path = str(file)
@@ -159,7 +166,7 @@ for file in data_dir.glob("*.cdf"):
                 print(f"File not found: {f}")
                 sys.exit(1)
         
-        pointing_cols = ['YD', 'spin_ra','spin_dec']
+        pointing_cols = ['YD', 'spin_ra','spin_dec', 'repoint']
         df_point = pd.read_csv(pointing_file, names=pointing_cols, skiprows=1)
         
         ## Convert yyyymmdd to YYYYDOY
@@ -168,12 +175,13 @@ for file in data_dir.glob("*.cdf"):
         date = datetime.strptime(yymmdd, "%Y%m%d")
         YD = f"{date.year}{date.timetuple().tm_yday:03d}"
         int_YD = int(YD)
+        repoint = basename.split("-repoint")[1].split("_")[0]
         
         print(f"Processing DOY: {YD}")
         
         ## Grab spin axis information from the pointing file
         
-        df_p = df_point[df_point['YD']==int_YD]
+        df_p = df_point[(df_point['YD']==int_YD) & (df_point['repoint'].isna() | (df_point['repoint']==int(repoint)))]
         if df_p.empty:
             raise ValueError(f"No matching rows found for {YD} in the pointing file")
         
@@ -184,8 +192,9 @@ for file in data_dir.glob("*.cdf"):
         df_pivot = pd.read_csv(pivot_csv)
         df_pp=df_pivot[df_pivot['DOY']==int_YD]
         pivot = df_pp['Pivot'].astype(float).values[0]
+        pivot = {"00128": 90, "00341": 90}.get(repoint, pivot)  # flew at 90, not as planned
         
-        PIVOT_ANGLE = pivot
+        PIVOT_ANGLE = {75: 74.990, 90: 90.096, 105: 104.944}[pivot]  # measured pivot
         
         pivot_str = f"pivot_{int(pivot)}"
         
@@ -200,17 +209,10 @@ for file in data_dir.glob("*.cdf"):
             nep_expo = np.zeros((60))
             
             ## Filter through Goodtime, create masking
-            start_arr,end_arr,expo = estimate_exposure_time(goodtime_file ,int_YD, ESA)
+            start_arr,end_arr,expo = estimate_exposure_time(goodtime_file ,int_YD, ESA, repoint)
             
-            met_epoch = datetime(2010, 1, 1, 0, 0, 0)
             epoch_sec = cdf['epoch'][:]
-            met_sec = []
-            
-            for x in range(len(epoch_sec)):
-                ss = (epoch_sec[x]-met_epoch).total_seconds()
-                met_sec.append(ss)
-            
-            met_sec = np.asarray(met_sec, dtype=float)    
+            met_sec = ttj2000ns_to_met(pycdf.lib.v_datetime_to_tt2000(epoch_sec))
             mask = np.zeros_like(epoch_sec,dtype=bool)
             
             for start, end in zip(start_arr, end_arr):
@@ -258,13 +260,13 @@ for file in data_dir.glob("*.cdf"):
             # Provenance columns for map manifest
             df_new['date_yyyymmdd'] = yymmdd
             df_new['yd'] = YD
-            df_new['repoint'] = basename.split("-repoint")[1].split("_")[0] if "-repoint" in basename else ""
+            df_new['repoint'] = repoint
             df_new['pivot'] = int(pivot)
             df_new['l1b_product'] = "histrates"
             df_new['l1b_filename'] = basename
             df_new['l1b_path'] = str(Path(file_path).resolve())
 
-            df_new.to_csv(f"./outdir/{pivot_str}/daily/data_YD_{YD}_esa{ESA}.csv", index=False)
+            df_new.to_csv(f"./outdir/{pivot_str}/daily/data_YD_{YD}_repoint{repoint}_esa{ESA}.csv", index=False)
         
     except Exception as e:
         print(f"Skipping {file.name}: {e}")
