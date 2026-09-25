@@ -146,8 +146,9 @@ data_dir = Path(data_dir_path)
 for x in [75,90,105]:
     os.makedirs(f'./outdir/pivot_{x}/daily', exist_ok=True)
 
-for k in ("lsk/naif0012.tls", "sclk/imap_sclk_0153.tsc"):
-    spiceypy.furnsh(str(Path(__file__).parent.parent / "input_SPICE" / k))
+## Latest leap-second and spacecraft-clock kernels (each supersedes the earlier ones)
+for k in ("lsk/naif*.tls", "sclk/imap_sclk_*.tsc"):
+    spiceypy.furnsh(str(max((Path(__file__).parent.parent / "input_SPICE").glob(k))))
 
 for file in data_dir.glob("*.cdf"):
     try:
