@@ -83,7 +83,8 @@ of, which is how one person's whole output gets checked against another's:
 
 Files are matched on the part of the name before the date and the version, so
 runs of the same product pair up even when they were made on different days
-from different code. A product only one directory has is reported and skipped.
+from different code. A product only one directory has has nothing to compare
+against, so its values are plotted on their own instead, as for a single CDF.
 Every comparison is restricted to the bins both runs have exposure in, because
 two maps built over different windows looked at different sky and outside the
 overlap there is nothing to compare. Note that this is an overlap in sky, not
@@ -519,10 +520,10 @@ def product_key(path):
 def pair_directories(first, second):
     """Match up files that are runs of the same product in two directories.
 
-    Returns the matched pairs, what was left over on each side, and any key
-    that more than one file in a directory claims. Nothing is guessed at: a
-    product present in only one directory is reported and skipped rather than
-    compared against something approximate.
+    Returns the matched pairs, what was left over on each side as (key, path),
+    and any key that more than one file in a directory claims. Nothing is
+    guessed at: a product present in only one directory is left over rather
+    than compared against something approximate.
     """
     catalogues = []
     for directory in (first, second):
@@ -536,7 +537,7 @@ def pair_directories(first, second):
         for key in sorted(set(catalogues[0]) & set(catalogues[1]))
     ]
     unmatched = [
-        (directory, sorted(set(mine) - set(theirs)))
+        (directory, [(key, mine[key][0]) for key in sorted(set(mine) - set(theirs))])
         for directory, mine, theirs in (
             (first, catalogues[0], catalogues[1]),
             (second, catalogues[1], catalogues[0]),
@@ -729,7 +730,7 @@ def draw_figure(
     print(f"Wrote {output}")
 
 
-def plot_one(dataset, path, args, variable):
+def plot_one(dataset, path, args, variable, output=None):
     """Plot every energy step of one map variable."""
     longitude_edges, latitude_edges, order, center = sky_grid(
         dataset, args.center, args.east_left
@@ -767,13 +768,15 @@ def plot_one(dataset, path, args, variable):
         args.columns,
         gridlines,
         f"{dataset.attrs['Logical_source']}  v{dataset.attrs['Data_version']}\n"
-        f"{variable} from {dataset.attrs['Start_date']}, "
+        # Not every producer sets Start_date; the file name carries it too
+        f"{variable} from "
+        f"{dataset.attrs.get('Start_date', path.stem.split('_')[-2])}, "
         f"{len(dataset.attrs['Parents'])} pointing sets, "
         f"{dataset.attrs.get('Spice_reference_frame', 'HAE')} longitude/latitude "
         f"centred on {center % 360:g}°, "
         f"{'east left' if args.east_left else 'east right'}",
         f"{description} [{units}]" if units else description,
-        args.output or Path(__file__).parent / f"{path.stem}_{variable}.png",
+        output or args.output or Path(__file__).parent / f"{path.stem}_{variable}.png",
     )
 
 
@@ -938,19 +941,47 @@ def plot_directories(directories, args):
             f"{directory.name} has {len(paths)} files for {key} "
             f"({', '.join(path.name for path in paths)}); using the first"
         )
-    for directory, keys in unmatched:
-        if keys:
-            print(f"{len(keys)} only in {directory.name}, skipped:")
-            for key in keys:
+    for directory, products in unmatched:
+        if products:
+            print(f"{len(products)} only in {directory.name}, plotted on their own:")
+            for key, _ in products:
                 print(f"  {key}")
-    if not pairs:
-        raise SystemExit("No product is present in both directories")
+    singles = [
+        (directory, key, path)
+        for directory, products in unmatched
+        for key, path in products
+    ]
+    if not pairs and not singles:
+        raise SystemExit("No map CDFs in either directory")
 
     output_dir = args.output or Path(__file__).parent
     output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\n{len(pairs)} products in both, writing to {output_dir}\n")
+    print(
+        f"\n{len(pairs)} products in both, {len(singles)} in only one, "
+        f"writing to {output_dir}\n"
+    )
     for key, first_path, second_path in pairs:
         compare_pair(key, (first_path, second_path), directories, args, output_dir)
+    for directory, key, path in singles:
+        plot_unmatched(key, path, directory, args, output_dir)
+
+
+def plot_unmatched(key, path, directory, args, output_dir):
+    """Plot the values of a product only one directory has, with no comparison."""
+    dataset = load_cdf(path)
+    available = map_variables(dataset)
+    missing = [name for name in args.variable if name not in available]
+    if missing:
+        print(f"{path.name}: not a map variable, skipped: " + ", ".join(missing))
+    for variable in args.variable:
+        if variable in available:
+            plot_one(
+                dataset,
+                path,
+                args,
+                variable,
+                output_dir / f"{key}_{directory.name}_{variable}.png",
+            )
 
 
 def main():
