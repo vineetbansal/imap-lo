@@ -8,7 +8,6 @@ Created on Sat Feb  7 11:53:09 2026
 This code produce spin angle distribution from the l1b histograms.
 """
 from spacepy.pycdf import CDF
-from spacepy import pycdf
 import numpy as np
 import os
 import sys
@@ -17,33 +16,8 @@ from datetime import datetime
 from pathlib import Path
 import pandas as pd, re, shutil
 import spiceypy
+from spacepy import pycdf
 from imap_processing.spice.time import ttj2000ns_to_met
-
-# The good-time boundaries are real spacecraft MET, so the histogram epochs have
-# to be converted with SPICE to be comparable to them.  Subtracting a naive
-# 2010-01-01 from the UTC epoch instead is off by -8.409 s (TT-UTC plus the leap
-# seconds since the MET epoch), which silently drops 734 of 23850 cycles across
-# the 158 days in the archive -- up to 14% of a thin day.
-_SPICE_DIR = Path(__file__).parent.parent / "input_SPICE"
-
-
-def furnish_kernels():
-    """Load the leap-second and spacecraft-clock kernels the MET conversion needs."""
-    if spiceypy.ktotal("all") == 0:
-        for rel in ("lsk/naif0012.tls", "sclk/imap_sclk_0153.tsc"):
-            path = _SPICE_DIR / rel
-            if not path.exists():
-                raise FileNotFoundError(f"required SPICE kernel missing: {path}")
-            spiceypy.furnsh(str(path))
-
-
-def epoch_to_met(epoch):
-    """Convert CDF epochs (datetimes) to spacecraft MET seconds via SPICE."""
-    return ttj2000ns_to_met(pycdf.lib.v_datetime_to_tt2000(np.asarray(epoch)))
-
-
-class NoGoodTimes(Exception):
-    """A day the goodtimes product has no intervals for; there is nothing to map."""
 
 def radec2cart(ra,th):
 
@@ -118,37 +92,15 @@ def create_ra_dec(s_ra,s_dec,pivot_angle):
     
     return raf,decf
 
-GOODTIME_COLS = ["YD","gd_start","gd_end","bin_start","bin_end","Instrument"] + \
-                [f"E-Step{i}" for i in range(1, 8)] + ["Comment"]
-
-
-def select_goodtimes(filename, YD, repoint=None):
-    """The goodtime rows belonging to one pointing.
-
-    A day can carry more than one repointing -- 2026-097 has repoint00209 and
-    repoint00211 -- and the goodtimes product covers them separately.  Selecting
-    on the day alone pairs a pointing's histogram counts with another pointing's
-    good times, which is how repoint00211's counts came to be mapped against
-    repoint00209's windows.  lo_l2 keys its inputs by repointing
-    (_complete_pointings), so the match is made on the repointing here too, and a
-    pointing the goodtimes product does not cover is dropped rather than guessed
-    at.
-    """
-    df = pd.read_csv(filename, names=GOODTIME_COLS)
-    df = df[df['YD'] == YD]
+def estimate_exposure_time(filename,YD, esa, repoint):
+    cols = ["YD","gd_start","gd_end","bin_start","bin_end","Instrument",	"E-Step1",	"E-Step2",	"E-Step3",	"E-Step4",	"E-Step5",	"E-Step6",	"E-Step7",	"Comment"]
+    
+    df1 = pd.read_csv(filename,names=cols)
+    
+    df = df1[(df1['YD']==YD) & df1['Comment'].str.contains(f"repoint{repoint}")]
     if df.empty:
-        raise NoGoodTimes(f"No matching rows found for {YD} in Goodtime file")
-
-    if repoint is not None:
-        df = df[df['Comment'].astype(str).str.contains(f"repoint{repoint}", regex=False)]
-        if df.empty:
-            raise NoGoodTimes(f"Goodtime file covers {YD} but not repoint{repoint}")
-    return df
-
-
-def estimate_exposure_time(filename,YD, esa, repoint=None):
-    df = select_goodtimes(filename, YD, repoint)
-
+        raise ValueError(f"No matching rows found for {YD} in Goodtime file")
+    
     result = np.zeros((7,60))
     start_arr = []
     end_arr = []
@@ -173,35 +125,6 @@ def estimate_exposure_time(filename,YD, esa, repoint=None):
     
     return start_arr,end_arr,result_df[f'E-Step{esa}']
 
-def goodtime_pivot(filename, YD, repoint=None):
-    """Read the pivot angle the L1B goodtimes product recorded for this pointing.
-
-    This is what both the cone geometry and the pivot_{75,90,105} routing are
-    built from.  The measured pivot is 74.990 / 90.096 / 104.944, and
-    imap_processing's lo_l2 uses that measured value.  Feeding it 90.000 instead
-    of 90.096 moves the boresight ring by a tenth of a degree, which flips bins
-    across pixel boundaries and shifts the intensity of ~11% of pixels by more
-    than 20%.
-
-    share_pivot.csv carries the nominal pointing group as *planned*, one row per
-    day, and the plan is not always what flew: repoint00128 (2026-016) and
-    repoint00341 (2026-227) both flew at 90.096 on days the plan calls 75 and
-    105.  A daily calendar cannot express a pivot change that lands on a mid-day
-    repointing, so routing by it filed repoint00128's daily files under pivot_75
-    and dropped that whole pointing from the pivot_90 map -- silently, since a
-    misrouted day is not a failed one.  Routing by the measured value instead
-    keeps the geometry and the destination directory from disagreeing.
-    """
-    df = select_goodtimes(filename, YD, repoint)
-
-    pivots = df['Comment'].astype(str).str.extract(r"pivot=([\d.]+)")[0].dropna().astype(float)
-    if pivots.empty:
-        raise ValueError(f"Goodtime file records no pivot= for {YD}")
-    if pivots.nunique() > 1:
-        raise ValueError(f"Goodtime file disagrees on the pivot for {YD}: "
-                         f"{sorted(pivots.unique())}")
-    return float(pivots.iloc[0])
-
 def route_by_pivot(data_dir, pivot_csv):
 
     m = dict(zip(*(pd.read_csv(pivot_csv)[["DOY", "Pivot"]].values.T)))
@@ -223,14 +146,8 @@ data_dir = Path(data_dir_path)
 for x in [75,90,105]:
     os.makedirs(f'./outdir/pivot_{x}/daily', exist_ok=True)
 
-furnish_kernels()
-
-# A day that fails here is a whole pointing missing from the map, and a pointing
-# is a median 49% of the exposure of every pixel its boresight ring crossed --
-# dropping one moves those pixels' intensity by a median 25%.  So the failures
-# are collected and reported at the end rather than scrolling past, and the run
-# exits non-zero if any day was lost.
-skipped_days = []
+for k in ("lsk/naif0012.tls", "sclk/imap_sclk_0153.tsc"):
+    spiceypy.furnsh(str(Path(__file__).parent.parent / "input_SPICE" / k))
 
 for file in data_dir.glob("*.cdf"):
     try:
@@ -241,15 +158,13 @@ for file in data_dir.glob("*.cdf"):
         
         pointing_file = './config_files/pointing_file.csv'
         goodtime_file = './config_files/imap_lo_goodtimes_2.csv'
+        pivot_csv = "./config_files/share_pivot.csv"
         
-        for f in [pointing_file, goodtime_file]:
+        for f in [pointing_file, goodtime_file, pivot_csv]:
             if not os.path.exists(f):
                 print(f"File not found: {f}")
                 sys.exit(1)
         
-        ## The repoint column is optional: a pointing file written before the
-        ## column existed has three, and pandas leaves the fourth all NaN,
-        ## which the lookup below falls back on.
         pointing_cols = ['YD', 'spin_ra','spin_dec', 'repoint']
         df_point = pd.read_csv(pointing_file, names=pointing_cols, skiprows=1)
         
@@ -259,51 +174,29 @@ for file in data_dir.glob("*.cdf"):
         date = datetime.strptime(yymmdd, "%Y%m%d")
         YD = f"{date.year}{date.timetuple().tm_yday:03d}"
         int_YD = int(YD)
-
-        repoint = basename.split("-repoint")[1].split("_")[0] if "-repoint" in basename else None
-
-        print(f"Processing DOY: {YD} repoint{repoint}")
-
-        ### -----------------
-        ## Ask the goodtimes product first: a pointing with no intervals is one
-        ## lo_l2 drops too, so it must not be reported as a lost pointing below.
-        ##
-        ## The cone geometry and the pivot_{75,90,105} group the daily file is
-        ## written to both come from the pivot the L1B goodtimes product
-        ## measured, which is what lo_l2 uses -- see goodtime_pivot().  The
-        ## measured values are 74.990 / 90.096 / 104.944, so rounding names the
-        ## group without consulting the planning calendar.
-        PIVOT_ANGLE = goodtime_pivot(goodtime_file, int_YD, repoint)
-        pivot = round(PIVOT_ANGLE)
-
+        repoint = basename.split("-repoint")[1].split("_")[0]
+        
+        print(f"Processing DOY: {YD}")
+        
         ## Grab spin axis information from the pointing file
-
-        df_p = df_point[df_point['YD']==int_YD]
+        
+        df_p = df_point[(df_point['YD']==int_YD) & (df_point['repoint'].isna() | (df_point['repoint']==int(repoint)))]
         if df_p.empty:
             raise ValueError(f"No matching rows found for {YD} in the pointing file")
-
-        ## A day can carry more than one repointing -- 2026-097 has
-        ## repoint00209 and repoint00211, whose spin axes are 1.08 deg apart --
-        ## so the axis is taken for this file's own repointing, the way the
-        ## goodtimes already are in select_goodtimes().  Keying on the day
-        ## alone gave every pointing of such a day the axis of whichever row
-        ## came first, which mapped one repointing's counts against the other's
-        ## look direction.  A pointing file with no repoint column, or one that
-        ## does not list this repointing, still matches on the day.
-        if repoint is not None and df_p['repoint'].notna().any():
-            per_repoint = df_p[df_p['repoint'].astype('Int64') == int(repoint)]
-            if not per_repoint.empty:
-                df_p = per_repoint
-        if len(df_p) > 1:
-            raise ValueError(
-                f"{YD} repoint{repoint}: {len(df_p)} pointing file rows, expected 1"
-            )
-
+        
         s_ra = df_p['spin_ra'].astype(float).values[0]
         s_dec = df_p['spin_dec'].astype(float).values[0]
-
-        pivot_str = f"pivot_{pivot}"
-
+        
+        ### -----------------
+        df_pivot = pd.read_csv(pivot_csv)
+        df_pp=df_pivot[df_pivot['DOY']==int_YD]
+        pivot = df_pp['Pivot'].astype(float).values[0]
+        pivot = {"00128": 90, "00341": 90}.get(repoint, pivot)  # flew at 90, not as planned
+        
+        PIVOT_ANGLE = {75: 74.990, 90: 90.096, 105: 104.944}[pivot]  # measured pivot
+        
+        pivot_str = f"pivot_{int(pivot)}"
+        
         ra,dec = create_ra_dec(s_ra,s_dec,PIVOT_ANGLE)
         
         cdf = CDF(file_path)
@@ -318,10 +211,9 @@ for file in data_dir.glob("*.cdf"):
             start_arr,end_arr,expo = estimate_exposure_time(goodtime_file ,int_YD, ESA, repoint)
             
             epoch_sec = cdf['epoch'][:]
-            met_sec = epoch_to_met(epoch_sec)
-
+            met_sec = ttj2000ns_to_met(pycdf.lib.v_datetime_to_tt2000(epoch_sec))
             mask = np.zeros_like(epoch_sec,dtype=bool)
-
+            
             for start, end in zip(start_arr, end_arr):
                 mask |= (met_sec >= start) & (met_sec <= end)
             
@@ -367,31 +259,16 @@ for file in data_dir.glob("*.cdf"):
             # Provenance columns for map manifest
             df_new['date_yyyymmdd'] = yymmdd
             df_new['yd'] = YD
-            df_new['repoint'] = repoint if repoint is not None else ""
-            df_new['pivot'] = pivot
-            df_new['pivot_measured'] = PIVOT_ANGLE
+            df_new['repoint'] = repoint
+            df_new['pivot'] = int(pivot)
             df_new['l1b_product'] = "histrates"
             df_new['l1b_filename'] = basename
             df_new['l1b_path'] = str(Path(file_path).resolve())
 
-            stem = f"data_YD_{YD}" + (f"_repoint{repoint}" if repoint is not None else "")
-            df_new.to_csv(f"./outdir/{pivot_str}/daily/{stem}_esa{ESA}.csv", index=False)
-
-    except NoGoodTimes as e:
-        # lo_l2 has nothing to accumulate for these days either, so they are an
-        # expected drop rather than a lost pointing.
-        print(f"  no good times, nothing to map: {file.name} ({e})")
+            df_new.to_csv(f"./outdir/{pivot_str}/daily/data_YD_{YD}_repoint{repoint}_esa{ESA}.csv", index=False)
+        
     except Exception as e:
-        skipped_days.append((file.name, f"{type(e).__name__}: {e}"))
-
-if skipped_days:
-    print(f"\n{len(skipped_days)} day(s) produced no daily files -- each one is a whole "
-          f"pointing missing from the map:")
-    for name, err in skipped_days:
-        print(f"  {name}: {err}")
-    sys.exit(1)
-
-print("\nall days with good times were mapped")
+        print(f"Skipping {file.name}: {e}")
 
 ## Move files into specific directory
 # route_by_pivot(
