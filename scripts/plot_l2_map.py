@@ -14,6 +14,10 @@ Runs in the imap_processing environment, which has matplotlib:
     poetry run python plot_l2_map.py \
         $IMAP_DATA_DIR/imap/lo/l2/2026/01/imap_lo_l2_l090-ena...-6mo_20260117_v001.0002.cdf
 
+By default both ena_intensity and ena_count are drawn, one figure each; a
+file that does not carry ena_count (older SDC versions, or maps_to_l2_cdf.py
+output) just gets the intensity, with a note saying the counts were skipped.
+
 Anything on the (epoch, energy, longitude, latitude) grid can be plotted with
 --variable, so the same script draws the exposure that produced the map, the
 backgrounds subtracted from it, or the uncertainties on it:
@@ -1000,11 +1004,11 @@ def main():
     parser.add_argument(
         "--variable",
         nargs="+",
-        default=["ena_intensity"],
+        default=["ena_intensity", "ena_count"],
         metavar="NAME",
         help="Map variables to plot, in the order they should appear "
-        "(default: ena_intensity). Comparing maps, any variable not in both "
-        "files is reported and skipped",
+        "(default: ena_intensity ena_count). Any variable not in the file, or "
+        "comparing maps not in both files, is reported and skipped",
     )
     parser.add_argument(
         "--compare",
@@ -1108,7 +1112,9 @@ def main():
         "--output",
         type=Path,
         help="Image to write (default: <cdf name>_<variable>.png beside this "
-        "script; with two CDFs, _diff and _ratio are appended). Comparing two "
+        "script; plotting several variables from one CDF, _<variable> is "
+        "appended to this name for each; with two CDFs, _diff and _ratio are "
+        "appended). Comparing two "
         "directories, this is the directory to write them all into instead",
     )
     args = parser.parse_args()
@@ -1139,8 +1145,23 @@ def main():
         )
         return
 
-    for variable in args.variable:
-        plot_one(read_map(args.cdf[0], variable), args.cdf[0], args, variable)
+    path = args.cdf[0]
+    dataset = load_cdf(path)
+    available = map_variables(dataset)
+    variables = [name for name in args.variable if name in available]
+    missing = [name for name in args.variable if name not in available]
+    if not variables:
+        # Nothing to draw, so read_map's message on why the first one is not
+        # plottable, with the map variables that are, is the useful thing to say
+        read_map(path, args.variable[0])
+    if missing:
+        print(f"{path.name}: not a map variable, skipped: " + ", ".join(missing))
+    for variable in variables:
+        # One --output for several variables would have each overwrite the last
+        output = args.output
+        if output and len(variables) > 1:
+            output = output.with_name(f"{output.stem}_{variable}{output.suffix}")
+        plot_one(dataset, path, args, variable, output)
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ done
 # alone, and the SDC's count and rate variables are theirs alone.
 VARIABLES="
   ena_intensity
+  ena_count
   ena_intensity_stat_uncert
   ena_intensity_sys_err
   ena_intensity_sys_err_minus
