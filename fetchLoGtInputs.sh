@@ -14,7 +14,7 @@ if [[ -z "$2" ]]; then
 fi
 
 # Go to the root path where data will be downloaded to
-source setup.sh 
+# source setup.sh
 # cd $IMAP_DATA_DIR
 
 # Get rid f any old data (commented out 8/14/2027)

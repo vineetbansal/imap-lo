@@ -21,7 +21,6 @@ Remove all existing files downloaded using imap-data-access and redownload - thi
 
    fetchLoGtInputs.sh has been modified slightly to work with $IMAP_DATA_DIR instead of a previously hardcoded folder. It now also downloads l1b goodtimes cdfs. TAKES A COUPLE OF HOURS.
 
-   cd quicklook
    ./fetchLoGtInputs.sh 20251101 20260813
 
 5. Copy data from $IMAP_DATA_DIR to the several input_* folders, and empty out the output/ and outdir/ folders for stages 1S4, 3S5-3S8.
