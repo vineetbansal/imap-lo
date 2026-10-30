@@ -1,7 +1,7 @@
 #!/bin/bash
-source ~/.zshrc
-source ~/.bashrc
-conda activate mapenv
+# source ~/.zshrc
+# source ~/.bashrc
+# conda activate mapenv
 
 echo "3S2_l1b_quickmaps L1B histrates to spin angle distribution Started "
 python3.11 l1b_to_spin.py

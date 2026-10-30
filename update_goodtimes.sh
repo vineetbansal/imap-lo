@@ -2,6 +2,7 @@
 
 cd 1S04_l1b_histRates_autogoodtimes
 
+mkdir -p output
 ./driver.sh "$delaytime"
 cd output 
 cp imap_lo_goodtimes.csv ../../input_goodtime

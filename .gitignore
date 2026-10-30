@@ -8,3 +8,5 @@ software_loads/
 *.csv
 *.pdf
 *.bsp
+
+input_SPICE/*

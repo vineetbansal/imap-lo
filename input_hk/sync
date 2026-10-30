@@ -1,3 +1,0 @@
-#!/bin/bash
-
-find "$IMAP_DATA_DIR/imap/lo/l1b" -name "*_nhk_*.cdf" -exec cp {} . \;

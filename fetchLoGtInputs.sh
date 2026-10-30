@@ -14,8 +14,8 @@ if [[ -z "$2" ]]; then
 fi
 
 # Go to the root path where data will be downloaded to
-source setup.sh 
-cd $IMAP_DATA_DIR
+# source setup.sh
+# cd $IMAP_DATA_DIR
 
 # Get rid f any old data (commented out 8/14/2027)
 # rm -rf imap/lo/l1a/*
@@ -87,12 +87,21 @@ for file in $FILES; do
 done
 echo "got l1c pset"
 
+echo "fetching SPICE kernels"
+for type in leapseconds spacecraft_clock planetary_constants imap_frames science_frames planetary_ephemeris lagrange_point; do
+    FILES=`imap-data-access query --table spice --type $type --version latest | awk '/\// {print $(NF-1)}'`
+    for file in $FILES; do
+        imap-data-access download $file
+    done
+done
+echo "got SPICE kernels"
+
 # Clear out the old data in the Lo team's auto-gt tool
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input/*
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/input_de/*
 #rm -rf imap/ancillary/lo/temp/1S4_l1b_histRates_autogoodtimes/nhk/*
 
-cd ..
+# cd ..
 
 # Move the new data to the location of the Lo team's auto-gt tool
 echo "copying files into new homes"
@@ -104,6 +113,9 @@ cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_nhk* ./input_hk
 cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_shk* ./input_shk
 cp $IMAP_DATA_DIR/imap/lo/l1b/*/*/*_prostar* ./input_prostar
 cp $IMAP_DATA_DIR/imap/lo/l1c/*/*/*_pset* ./input_l1c
+for d in lsk sclk pck fk spk; do
+    cp $IMAP_DATA_DIR/imap/spice/$d/* ./input_SPICE/$d/
+done
 echo "done copying over"
 
 echo "cleaning up homes"

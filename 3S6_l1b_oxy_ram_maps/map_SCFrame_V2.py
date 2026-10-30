@@ -80,10 +80,13 @@ def get_brate(YD,esa):
     return brate
 
 for pp in [75,90,105]:
+    # Same geometry as 3S5_l1b_ram_maps/map_SCFrame_V2.py
+    pivot_deg = pp + 4.0
+    pivot = np.radians(pivot_deg)
+
     work_dir1 = f'./outdir/pivot_{pp}/daily'
     map_dir = f"./outdir/pivot_{pp}/maps/"
-    cosalpha_dir = f'../3S5_l1b_ram_maps/outdir/pivot_{pp}/maps'
-    
+
     os.makedirs(map_dir, exist_ok=True)
     
     data_dir = Path(work_dir1)
@@ -135,7 +138,15 @@ for pp in [75,90,105]:
                     jmap = int(theta/deg)
                     if (jmap == 30):
                         jmap = 0
-                    
+
+                    # Ram-side filter, per sample, as in 3S5. Masking whole
+                    # pixels after accumulating (with 3S5's cosalpha map, as
+                    # this used to) keeps or drops every pointing's samples in
+                    # a pixel on the say of whichever file was read last.
+                    alpha = np.radians((ia + 0.5) * 6.0)
+                    if np.sin(pivot)*np.sin(alpha) <= 0.0:
+                        continue
+
                     h_cnts_map[jmap,imap] += counts[ia]
                     exposure[jmap,imap] += expo[ia]
                     
@@ -174,36 +185,6 @@ for pp in [75,90,105]:
                         h_fvar_map[jmap,imap] = h_flux_map[jmap,imap]**2 / h_cnts_map[jmap,imap]
                     else:
                         h_fvar_map[jmap,imap] = 0.0
-                        
-        
-
-        cosalpha_file = (
-            f"{cosalpha_dir}/map_cosalpha_esa{esa}.csv"
-        )
-
-        cosalpha_map = pd.read_csv(cosalpha_file).values
-
-        # ------------------------------------------------------------
-        # Final ram-side filter
-        # Keep only pixels where cosalpha > 0
-        # ------------------------------------------------------------
-        ram_mask = cosalpha_map > 0.0
-
-        for arr in [
-            h_cnts_map,
-            exposure,
-            h_rate_map,
-            h_rate_var,
-            h_flux_map,
-            h_fvar_map,
-            back_rate_map,
-            back_rate_var,
-            back_flux_map,
-            back_flux_var,
-            stonoise_map,
-            stonoise_var_map,
-        ]:
-            arr[~ram_mask] = 0.0
 
         sbg_file = pd.DataFrame(stonoise_map)
         sbg_file.to_csv(map_dir+f"/map_stbg_esa{esa}.csv", index=False)
